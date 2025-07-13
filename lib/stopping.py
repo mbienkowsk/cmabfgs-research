@@ -1,12 +1,9 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any
 
 import numpy as np
-from cmaes import CMA
 
-from lib.util import EvalCounter
+from lib.optimizers.cmaes import CMAESState
 
 
 class StopReason(Enum):
@@ -26,49 +23,26 @@ class StopOptimization(Exception):
 
 
 @dataclass
-class EarlyStopping(ABC):
-    @abstractmethod
-    def check(self, context: Any):
-        """Check whether to stop the optimizer and throw StopOptimization if so"""
+class CMAESEarlyStopping:
+    max_evals: int | None = field(default=None)
+    tolfun: float | None = field(default=None)
 
+    def check_max_evals(self, state: CMAESState):
+        return self.max_evals is not None and state.num_evaluations >= self.max_evals
 
-@dataclass
-class MaxEvalsStopping(EarlyStopping):
-    """Base class for early stopping based on maximum number of evaluations."""
+    def check_tolfun(self, state: CMAESState):
+        if self.tolfun is None or not state.population_evaluations:
+            return False
 
+        best, worst = np.min(state.population_evaluations), np.max(
+            state.population_evaluations
+        )
+        return np.abs(best - worst) < self.tolfun
 
-@dataclass
-class TolFunStopping(EarlyStopping):
-    """Base class for early stopping based on the toleration for the difference between the best and
-    worst individual in a population."""
-
-
-@dataclass
-class TolHistStopping(EarlyStopping):
-    # TODO: implement
-    """Base class for early stopping based on history tolerance."""
-
-
-@dataclass
-class CMAESContext:
-    cmaes: CMA
-    eval_counter: EvalCounter
-    fitness_values: np.ndarray
-
-
-@dataclass
-class CMAESMaxEvalsStopping(MaxEvalsStopping):
-    max_evals: int
-
-    def check(self, context: CMAESContext):
-        if context.eval_counter.num_evaluations >= self.max_evals:
-            raise StopOptimization(StopReason.MAXEVALS)
-
-
-@dataclass
-class TolFunCMAESStopping(TolFunStopping):
-    tolerance: float
-
-    def check(self, context: CMAESContext):
-        best, worst = np.min(context.fitness_values), np.max(context.fitness_values)
-        return abs(best - worst) < self.tolerance
+    def __call__(self, state: CMAESState):
+        return any(
+            (
+                self.check_max_evals(state),
+                self.check_tolfun(state),
+            )
+        )
