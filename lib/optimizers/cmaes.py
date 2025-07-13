@@ -36,6 +36,7 @@ class CMAES(Optimizer):
         popsize: int,
         seed: int,
         stopper: CMAESEarlyStopping,
+        callback: "CMAESMetricsCollector",
         sigma: float = 1,
     ):
         self.inner = CMA(mean=mean, sigma=sigma, seed=seed, population_size=popsize)
@@ -46,6 +47,7 @@ class CMAES(Optimizer):
             population_evaluations=[],  # pyright: ignore[reportArgumentType]
             counter=fun,
         )
+        self.callback = callback
 
     @property
     def raw_objective(self):
@@ -72,10 +74,10 @@ class CMAES(Optimizer):
         return solutions
 
     @override
-    def optimize(self, callback: "CMAESMetricsCollector"):
+    def optimize(self):
         while not self.stopper(self.state):
             solutions = self.step()
-            callback(self.state)
+            self.callback(self.state)
 
     @property
     def mean(self):
