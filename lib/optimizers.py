@@ -8,7 +8,8 @@ from scipy.optimize import golden, minimize
 if TYPE_CHECKING:
     from lib.callbacks import ExperimentCallback
 
-from lib.util import StopOptimization, gradient_central, one_dimensional
+from lib.stopping import StopOptimization
+from lib.util import gradient_central, one_dimensional
 
 
 class Optimizer(ABC):
@@ -73,9 +74,7 @@ class BFGS(Optimizer):
 
 
 class LBFGS(BFGS):
-    def _optimize(
-        self, objective: Callable, callback: "ExperimentCallback", fruppo: int
-    ):
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"):
         minimize(
             objective,
             self.x0,

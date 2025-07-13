@@ -41,11 +41,6 @@ class EvalCounter:
         return y
 
 
-class StopOptimization(Exception):
-    """Used to signal an optimizer to stop looking for the solution
-    and return the control flow to the caller"""
-
-
 def one_dimensional(fun: Callable, x, d):
     """Gimmick to make a multdimensional function 1dim
     with a set direction d"""
