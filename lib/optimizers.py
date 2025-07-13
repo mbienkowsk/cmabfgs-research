@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, override
+from typing import TYPE_CHECKING, Callable, override
 
 import numpy as np
 from cmaes import CMA
 from scipy.optimize import golden, minimize
 
-from lib.util import (ExperimentCallback, StopOptimization, gradient_central,
-                      one_dimensional)
+if TYPE_CHECKING:
+    from lib.callbacks import ExperimentCallback
+
+from lib.util import StopOptimization, gradient_central, one_dimensional
 
 
 class Optimizer(ABC):
@@ -16,24 +18,14 @@ class Optimizer(ABC):
     def step(self, objective: Callable): ...
 
     @abstractmethod
-    def _optimize(self, objective: Callable, callbacks: list[ExperimentCallback]): ...
+    @abstractmethod
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"): ...
 
-    def optimize(self, objective: Callable, callbacks: list[ExperimentCallback]):
+    def optimize(self, objective: Callable, callback: "ExperimentCallback"):
         try:
-            self._optimize(objective, callbacks)
+            self._optimize(objective, callback)
         except StopOptimization:
             return
-
-    @staticmethod
-    def merge_callbacks(callbacks: list[ExperimentCallback]):
-        """Even though the callbacks are passed as a list, for some use
-        cases it's better to merge them"""
-
-        def merged(arg: Any):
-            for callback in callbacks:
-                callback(arg)
-
-        return merged
 
 
 class CMAES(Optimizer):
@@ -52,14 +44,18 @@ class CMAES(Optimizer):
         for _ in range(self.inner.population_size):
             x = self.inner.ask()
             solutions.append((x, objective(x)))
-            self.inner.tell(solutions)
 
         self.inner.tell(solutions)
 
     @override
-    def _optimize(self, objective: Callable, callbacks: list[ExperimentCallback]):
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"):
         while True:
             self.step(objective)
+            callback(self.inner)
+
+    @property
+    def mean(self):
+        return self.inner.mean
 
 
 class BFGS(Optimizer):
@@ -67,25 +63,24 @@ class BFGS(Optimizer):
         self.x0 = x0
         self.inner = None
 
-    def _optimize(self, objective: Callable, callbacks: list[ExperimentCallback]):
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"):
         minimize(
             objective,
             self.x0,
             method="BFGS",
-            callback=self.merge_callbacks(callbacks),
+            callback=callback,
         )
 
 
 class LBFGS(BFGS):
-
     def _optimize(
-        self, objective: Callable, callbacks: list[ExperimentCallback], fruppo: int
+        self, objective: Callable, callback: "ExperimentCallback", fruppo: int
     ):
         minimize(
             objective,
             self.x0,
             method="L-BFGS-B",
-            callback=self.merge_callbacks(callbacks),
+            callback=callback,
         )
 
 
@@ -111,8 +106,7 @@ class CMABFGSHybrid(Optimizer):
 
         self.cma.tell(solutions)
 
-    def _optimize(self, objective: Callable, callbacks: list[ExperimentCallback]):
-        callback = self.merge_callbacks(callbacks)
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"):
 
         for _ in range(self.n_cmaes_iterations):
             self.cma_step(objective)
@@ -149,8 +143,7 @@ class CMAGoldenSearchHybrid(Optimizer):
 
         self.cma.tell(solutions)
 
-    def _optimize(self, objective: Callable, callbacks: list[ExperimentCallback]):
-        callback = self.merge_callbacks(callbacks)
+    def _optimize(self, objective: Callable, callback: "ExperimentCallback"):
 
         for _ in range(self.n_cmaes_iterations):
             self.cma_step(objective)

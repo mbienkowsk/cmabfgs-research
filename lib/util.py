@@ -1,11 +1,7 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Callable, overload
+from typing import Callable
 
 import numpy as np
-from scipy.optimize import OptimizeResult
-
-from lib.optimizers import Optimizer
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -24,21 +20,6 @@ def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarr
     return grad
 
 
-class ExperimentCallback(ABC):
-    @abstractmethod
-    @overload
-    def __call__(self, obj: Optimizer): ...
-
-    @abstractmethod
-    @overload
-    def __call__(self, intermediate_result: OptimizeResult): ...
-
-
-@dataclass
-class Experiment(ABC):
-    callbacks: list[ExperimentCallback]
-
-
 @dataclass
 class EvalCounter:
     """A wrapper to count the number of evaluations & keep track of the
@@ -46,14 +27,16 @@ class EvalCounter:
 
     fun: Callable
     num_evaluations: int = field(default=0)
-    best_solution: tuple[np.ndarray, float] | None = field(default=None)
+    best_solutions: list[float] = field(default_factory=list)
 
     def __call__(self, x):
         self.num_evaluations += 1
         y = self.fun(x)
 
-        if self.best_solution is None or y < self.best_solution[1]:
-            self.best_solution = (x.copy(), y)
+        if not self.best_solutions or y < self.best_solutions[-1]:
+            self.best_solutions.append(y)
+        else:
+            self.best_solutions.append(self.best_solutions[-1])
 
         return y
 
@@ -63,7 +46,7 @@ class StopOptimization(Exception):
     and return the control flow to the caller"""
 
 
-def one_dim(fun: Callable, x, d):
+def one_dimensional(fun: Callable, x, d):
     """Gimmick to make a multdimensional function 1dim
     with a set direction d"""
 
