@@ -5,7 +5,7 @@ import numpy as np
 from cmaes import CMA
 
 from lib.callbacks import ExperimentCallback
-from lib.stopping import EarlyStopping
+from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 from .base import Optimizer
@@ -13,7 +13,7 @@ from .base import Optimizer
 
 @dataclass
 class CMAESState:
-    mean_evaluation: float
+    mean: np.ndarray
     population_evaluations: float
     counter: EvalCounter
 
@@ -33,14 +33,14 @@ class CMAES(Optimizer):
         mean: np.ndarray,
         popsize: int,
         seed: int,
-        stopper: EarlyStopping,
+        stopper: CMAESEarlyStopping,
         sigma: float = 1,
     ):
         self.inner = CMA(mean=mean, sigma=sigma, seed=seed, population_size=popsize)
         self.seed = seed
         self.stopper = stopper
         self.state = CMAESState(
-            mean_evaluation=float("inf"),
+            mean=np.array([]),
             population_evaluations=[],  # pyright: ignore[reportArgumentType]
             counter=fun,
         )
@@ -56,7 +56,7 @@ class CMAES(Optimizer):
 
     def update_state(self, population_evaluations: list[float]):
         self.state.population_evaluations = population_evaluations
-        self.state.mean_evaluation = self.raw_objective(self.mean)
+        self.state.mean = self.mean
 
     def step(self):
         solutions = []
