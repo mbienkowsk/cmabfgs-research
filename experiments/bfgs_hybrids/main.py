@@ -26,9 +26,9 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
-DIMENSIONS = int(os.environ.get("DIMENSIONS", 10))
-NUM_RUNS = int(os.environ.get("N_RUNS", 1))
-SWITCH_AFTER_ITERATIONS = int(os.environ.get("SWITCH_AFTER", 50))
+DIMENSIONS = int(os.environ["DIMENSIONS"])
+NUM_RUNS = int(os.environ["N_RUNS"])
+SWITCH_AFTER_ITERATIONS = int(os.environ["SWITCH_AFTER"])
 MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
