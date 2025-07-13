@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 
 import numpy as np
@@ -15,9 +15,9 @@ from .base import Optimizer
 
 @dataclass
 class CMAESState:
-    mean: np.ndarray
-    population_evaluations: float
     counter: EvalCounter
+    mean: np.ndarray = field(default_factory=lambda: np.array([]))
+    population_evaluations: list[float] = field(default_factory=list)
 
     @property
     def num_evaluations(self):
@@ -43,8 +43,6 @@ class CMAES(Optimizer):
         self.seed = seed
         self.stopper = stopper
         self.state = CMAESState(
-            mean=np.array([]),
-            population_evaluations=[],  # pyright: ignore[reportArgumentType]
             counter=fun,
         )
         self.callback = callback
