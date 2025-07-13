@@ -45,10 +45,3 @@ class BestSoFar(Metric):
 
     def collect_bfgs(self, state: BFGSState):
         return state.best_solutions[-1] if state.best_solutions else None
-
-    def collect_cmabfgs(self, state: CMABFGSState):
-        if state.mode == "CMAES":
-            return self.collect_cmaes(state.cmaes_state)
-        elif state.mode == "BFGS":
-            return self.collect_bfgs(state.bfgs_state)
-        return None
