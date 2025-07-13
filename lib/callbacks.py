@@ -1,4 +1,5 @@
 from abc import ABC
+from pathlib import Path
 from typing import Any, Sequence
 
 import pandas as pd
@@ -14,7 +15,7 @@ from lib.optimizers.cmaes import CMAESState
 class ExperimentCallback(ABC):
     data: dict[str, list[Any]]
 
-    def export_to_csv(self, path: str):
+    def export_to_csv(self, path: Path):
         self.as_dataframe().to_csv(path)
 
     def as_dataframe(self):
