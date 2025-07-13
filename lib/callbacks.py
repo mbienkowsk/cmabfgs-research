@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any
+from typing import Any, Sequence
 
 import pandas as pd
 
@@ -19,7 +19,7 @@ class ExperimentCallback(ABC):
 
 
 class CMAESMetricsCollector(ExperimentCallback):
-    def __init__(self, metrics: list[Metric]):
+    def __init__(self, metrics: Sequence[Metric]):
         self.metrics = metrics
         self.data = {stat.key(): [] for stat in metrics}
 
@@ -29,7 +29,7 @@ class CMAESMetricsCollector(ExperimentCallback):
 
 
 class BFGSMetricsCollector(ExperimentCallback):
-    def __init__(self, metrics: list[Metric]):
+    def __init__(self, metrics: Sequence[Metric]):
         self.metrics = metrics
         self.data = {stat.key(): [] for stat in metrics}
 
