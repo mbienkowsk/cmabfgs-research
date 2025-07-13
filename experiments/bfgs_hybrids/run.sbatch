@@ -24,12 +24,14 @@
 
 DEFAULT_DIMENSIONS=50
 DEFAULT_N_RUNS=50
+DEFAULT_SWITCH_AFTER=200
 
 # Set job name based on arguments
 : "${DIMENSIONS:=$DEFAULT_DIMENSIONS}"
 : "${N_RUNS:=$DEFAULT_N_RUNS}"
+: "${SWITCH_AFTER:=$DEFAULT_SWITCH_AFTER}"
 
-echo "Running with dimensions: $DIMENSIONS and number of runs: $N_RUNS"
+echo "Running with dimensions: $DIMENSIONS and number of runs: $N_RUNS. Switch after: $SWITCH_AFTER."
 
 JOB_NAME="bfgs_hybrids_dim_${DIMENSIONS}_nruns_${N_RUNS}"
 scontrol update JobName=$JOB_NAME JobId=$SLURM_JOB_ID
