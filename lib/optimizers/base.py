@@ -11,8 +11,5 @@ class Optimizer(ABC):
     state: Any
 
     @abstractmethod
-    def step(self, objective: Callable): ...
-
-    @abstractmethod
     @abstractmethod
     def optimize(self, objective: Callable, callback: "ExperimentCallback"): ...
