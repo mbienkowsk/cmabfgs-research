@@ -57,6 +57,8 @@ class CMABFGS(Optimizer):
             self.cma_step()
             self.callback(self.state)
 
+        self.state.mode = "BFGS"
+
         def callback_wrapper(intermediate_result: OptimizeResult):
             self.state.bfgs_state.current_result = intermediate_result
             return self.callback(self.state)
@@ -66,4 +68,8 @@ class CMABFGS(Optimizer):
             self.cma.mean,
             method="BFGS",
             callback=callback_wrapper,
+            options={
+                "gtol": 1e-30,
+                "hess_inv0": self.cma._C,
+            },
         )
