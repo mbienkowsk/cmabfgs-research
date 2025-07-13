@@ -1,16 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from cmaes import CMA
-
-from lib.util import EvalCounter
+from lib.optimizers.cmaes import CMAESState
 
 
 class Metric(ABC):
     @abstractmethod
     def key(self) -> str: ...
     @abstractmethod
-    def collect(self, cmaes: CMA, evalcounter: EvalCounter) -> Any: ...
+    def collect(self, state: CMAESState) -> Any: ...
 
 
 class CMAESMetric(Metric): ...
@@ -20,13 +18,13 @@ class MeanEvaluation(CMAESMetric):
     def key(self):
         return "mean"
 
-    def collect(self, cmaes, evalcounter):
-        return evalcounter.fun(cmaes.mean)
+    def collect(self, state: CMAESState):
+        return state.counter.without_counting(state.mean)
 
 
 class BestSoFar(CMAESMetric):
     def key(self):
         return "best"
 
-    def collect(self, cmaes, evalcounter):
-        return evalcounter.best_solutions[-1] if evalcounter.best_solutions else None
+    def collect(self, state: CMAESState):
+        return state.best_solutions[-1] if state.best_solutions else None

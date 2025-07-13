@@ -25,6 +25,10 @@ class EvalCounter:
     """A wrapper to count the number of evaluations & keep track of the
     best solution"""
 
+    @property
+    def without_counting(self):
+        return self.fun
+
     fun: Callable
     num_evaluations: int = field(default=0)
     best_solutions: list[float] = field(default_factory=list)

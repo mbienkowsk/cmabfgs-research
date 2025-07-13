@@ -6,6 +6,7 @@ from cmaes import CMA
 from scipy.optimize import OptimizeResult
 
 from lib.metrics import CMAESMetric
+from lib.optimizers.cmaes import CMAESState
 
 
 class ExperimentCallback(ABC):
@@ -30,9 +31,9 @@ class CMAESMetricsCollector(ExperimentCallback):
         self.metrics = metrics
         self.data = {stat.key(): [] for stat in metrics}
 
-    def __call__(self, cmaes):
+    def __call__(self, state: CMAESState):
         for stat in self.metrics:
-            self.data[stat.key()].append(stat.collect(cmaes, self.evalcounter))
+            self.data[stat.key()].append(stat.collect(state))
 
     def as_dataframe(self):
         return pd.DataFrame(self.data)
