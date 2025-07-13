@@ -1,8 +1,12 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 from cmaes import CMA
 from scipy.optimize import golden
 
-from lib.callbacks import ExperimentCallback
+if TYPE_CHECKING:
+    from lib.callbacks import ExperimentCallback
+
 from lib.optimizers.base import Optimizer
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter, gradient_central, one_dimensional
@@ -36,7 +40,7 @@ class GoldenCMAES(Optimizer):
 
         self.cma.tell(solutions)
 
-    def optimize(self, callback: ExperimentCallback):
+    def optimize(self, callback: "ExperimentCallback"):
         for _ in range(self.n_cmaes_iterations):
             if self.stopping(self.state):
                 return

@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from lib.optimizers.cmaes import CMAESState
+if TYPE_CHECKING:
+    from lib.optimizers.cmaes import CMAESState
 
 
 class StopReason(Enum):
@@ -27,10 +29,10 @@ class CMAESEarlyStopping:
     max_evals: int | None = field(default=None)
     tolfun: float | None = field(default=None)
 
-    def check_max_evals(self, state: CMAESState):
+    def check_max_evals(self, state: "CMAESState"):
         return self.max_evals is not None and state.num_evaluations >= self.max_evals
 
-    def check_tolfun(self, state: CMAESState):
+    def check_tolfun(self, state: "CMAESState"):
         if self.tolfun is None or not state.population_evaluations:
             return False
 
@@ -39,7 +41,7 @@ class CMAESEarlyStopping:
         )
         return np.abs(best - worst) < self.tolfun
 
-    def __call__(self, state: CMAESState):
+    def __call__(self, state: "CMAESState"):
         return any(
             (
                 self.check_max_evals(state),

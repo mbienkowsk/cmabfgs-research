@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import numpy as np
 from cmaes import CMA
 
-from lib.callbacks import ExperimentCallback
+if TYPE_CHECKING:
+    from lib.callbacks import CMAESMetricsCollector
+
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
@@ -70,7 +72,7 @@ class CMAES(Optimizer):
         return solutions
 
     @override
-    def optimize(self, callback: ExperimentCallback):
+    def optimize(self, callback: "CMAESMetricsCollector"):
         while not self.stopper(self.state):
             solutions = self.step()
             callback(self.state)

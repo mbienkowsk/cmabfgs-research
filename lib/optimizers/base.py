@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-from lib.callbacks import ExperimentCallback
+if TYPE_CHECKING:
+    from lib.callbacks import ExperimentCallback
 
 
 class Optimizer(ABC):
@@ -14,4 +15,4 @@ class Optimizer(ABC):
 
     @abstractmethod
     @abstractmethod
-    def optimize(self, objective: Callable, callback: ExperimentCallback): ...
+    def optimize(self, objective: Callable, callback: "ExperimentCallback"): ...

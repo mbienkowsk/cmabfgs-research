@@ -1,7 +1,11 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.optimize import minimize
 
-from lib.callbacks import ExperimentCallback
+if TYPE_CHECKING:
+    from lib.callbacks import ExperimentCallback
+
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
 
@@ -13,7 +17,7 @@ class BFGS(Optimizer):
         self.seed = seed
         self.fun = fun
 
-    def optimize(self, callback: ExperimentCallback):
+    def optimize(self, callback: "ExperimentCallback"):
         minimize(
             self.fun,
             self.x0,
