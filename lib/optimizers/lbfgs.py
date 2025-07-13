@@ -1,26 +1,19 @@
-from typing import TYPE_CHECKING
+from scipy.optimize import OptimizeResult, minimize
 
-import numpy as np
-from scipy.optimize import minimize
-
-if TYPE_CHECKING:
-    from lib.callbacks import ExperimentCallback
-
-from lib.optimizers.base import Optimizer
-from lib.util import EvalCounter
+from lib.optimizers.bfgs import BFGS
 
 
-class LBFGS(Optimizer):
-    def __init__(self, x0: np.ndarray, seed: int, fun: EvalCounter):
-        self.x0 = x0
-        self.inner = None
-        self.seed = seed
-        self.fun = fun
+class LBFGS(BFGS):
 
-    def optimize(self, callback: "ExperimentCallback"):
+    def optimize(self):
+
+        def callback_wrapper(intermediate_result: OptimizeResult):
+            self.state.current_result = intermediate_result
+            return self.callback(self.state)
+
         minimize(
-            self.fun,
+            self.state.counter,
             self.x0,
             method="L-BFGS-B",
-            callback=callback,
+            callback=callback_wrapper,
         )
