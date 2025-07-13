@@ -70,6 +70,7 @@ class CMABFGS(Optimizer):
             callback=callback_wrapper,
             options={
                 "gtol": 1e-30,
-                "hess_inv0": self.cma._C,
+                "hess_inv0": (self.cma._C + self.cma._C.T) / 2,
+                # TODO: why is this still happening? investigate
             },
         )
