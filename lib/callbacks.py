@@ -16,7 +16,7 @@ class ExperimentCallback(ABC):
     data: dict[str, list[Any]]
 
     def export_to_csv(self, path: Path):
-        self.as_dataframe().to_csv(path)
+        self.as_dataframe().to_csv(path, index_label="evaluations")
 
     def as_dataframe(self):
         return pd.DataFrame(self.data)
