@@ -11,7 +11,7 @@ from lib.optimizers.cmaes import CMAESState
 from lib.util import EvalCounter
 
 if TYPE_CHECKING:
-    from lib.callbacks import CMABFGSMetricsCollector
+    from lib.callbacks import MetricsCollector
 
 
 @dataclass
@@ -31,7 +31,7 @@ class CMABFGS(Optimizer):
         seed: int,
         fun: EvalCounter,
         popsize: int,
-        callback: "CMABFGSMetricsCollector",
+        callback: "MetricsCollector",
         sigma: int = 1,
     ):
         self.cma = CMA(mean=x0, sigma=sigma, seed=seed, population_size=popsize)

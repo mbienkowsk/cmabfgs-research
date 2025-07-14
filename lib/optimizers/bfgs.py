@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import OptimizeResult, minimize
 
 if TYPE_CHECKING:
-    from lib.callbacks import BFGSMetricsCollector
+    from lib.callbacks import MetricsCollector
 
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
@@ -33,7 +33,7 @@ class BFGS(Optimizer):
         x0: np.ndarray,
         seed: int,
         fun: EvalCounter,
-        callback: "BFGSMetricsCollector",
+        callback: "MetricsCollector",
     ):
         self.x0 = x0
         self.inner = None

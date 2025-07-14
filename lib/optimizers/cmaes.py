@@ -5,7 +5,7 @@ import numpy as np
 from cmaes import CMA
 
 if TYPE_CHECKING:
-    from lib.callbacks import CMAESMetricsCollector
+    from lib.callbacks import MetricsCollector
 
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
@@ -36,7 +36,7 @@ class CMAES(Optimizer):
         popsize: int,
         seed: int,
         stopper: CMAESEarlyStopping,
-        callback: "CMAESMetricsCollector",
+        callback: "MetricsCollector",
         sigma: float = 1,
     ):
         self.inner = CMA(mean=mean, sigma=sigma, seed=seed, population_size=popsize)

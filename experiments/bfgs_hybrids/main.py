@@ -15,8 +15,7 @@ import seaborn as sns
 from loguru import logger
 from sympy import prime
 
-from lib.callbacks import (BFGSMetricsCollector, CMABFGSMetricsCollector,
-                           CMAESMetricsCollector)
+from lib.callbacks import MetricsCollector
 from lib.funs import Elliptic
 from lib.metrics import BestSoFar
 from lib.optimizers import BFGS, CMAES, LBFGS
@@ -45,7 +44,7 @@ CMABFGS_RESULT_DIR = RESULT_DIR / "cmabfgs"
 def run_vanilla(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(Elliptic.fun)
     metrics = [BestSoFar()]
-    callback = CMAESMetricsCollector(metrics)
+    callback = MetricsCollector(metrics, "cmaes")
     stopper = CMAESEarlyStopping(max_evals=MAXEVALS, tolfun=1e-9)
     cmaes = CMAES(
         mean=x,
@@ -66,7 +65,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
 def run_bfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(Elliptic.fun)
     metrics = [BestSoFar()]
-    callback = BFGSMetricsCollector(metrics)
+    callback = MetricsCollector(metrics, "bfgs")
     bfgs = BFGS(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()
     callback.export_to_csv(
@@ -78,7 +77,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 def run_lbfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(Elliptic.fun)
     metrics = [BestSoFar()]
-    callback = BFGSMetricsCollector(metrics)
+    callback = MetricsCollector(metrics, "bfgs")
     bfgs = LBFGS(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()
     callback.export_to_csv(
@@ -90,7 +89,7 @@ def run_lbfgs(x: np.ndarray, seed: int, idx: int):
 def run_cmabfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(Elliptic.fun)
     metrics = [BestSoFar()]
-    callback = CMABFGSMetricsCollector(metrics)
+    callback = MetricsCollector(metrics, "cmabfgs")
     cmabfgs = CMABFGS(
         x,
         seed=seed,
