@@ -52,4 +52,4 @@ pip install -r requirements.txt
 
 # Run the Python script
 echo "Running the bfgs_hybrids"
-python3 -m experiments.all_hybrids --dimensions $DIMENSIONS --n_runs $N_RUNS
+python3 -m experiments.bfgs_hybrids.main --dimensions $DIMENSIONS --n_runs $N_RUNS

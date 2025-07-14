@@ -34,7 +34,7 @@ submit_job() {
   export N_RUNS=$RUNS
   export SWITCH_AFTER=$SWITCH
 
-  sbatch job_template.sh
+  sbatch experiments/bfgs_hybrids/run.sbatch
 }
 
 # Main loop
