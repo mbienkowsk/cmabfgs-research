@@ -16,7 +16,7 @@ from loguru import logger
 from sympy import prime
 
 from lib.callbacks import MetricsCollector
-from lib.funs import Elliptic
+from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.optimizers import BFGS, CMAES, LBFGS
 from lib.optimizers.cmabfgs import CMABFGS
@@ -28,6 +28,7 @@ BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 SWITCH_AFTER_ITERATIONS = int(os.environ["SWITCH_AFTER"])
+OBJECTIVE = get_function_by_name(os.environ["OBJECTIVE"])
 MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
@@ -42,7 +43,7 @@ CMABFGS_RESULT_DIR = RESULT_DIR / "cmabfgs"
 
 
 def run_vanilla(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(Elliptic.fun)
+    counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "cmaes")
     stopper = CMAESEarlyStopping(max_evals=MAXEVALS, tolfun=1e-9)
@@ -63,7 +64,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
 
 
 def run_bfgs(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(Elliptic.fun)
+    counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "bfgs")
     bfgs = BFGS(x, seed=seed, fun=counter, callback=callback)
@@ -75,7 +76,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 
 
 def run_lbfgs(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(Elliptic.fun)
+    counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "bfgs")
     bfgs = LBFGS(x, seed=seed, fun=counter, callback=callback)
@@ -87,7 +88,7 @@ def run_lbfgs(x: np.ndarray, seed: int, idx: int):
 
 
 def run_cmabfgs(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(Elliptic.fun)
+    counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "cmabfgs")
     cmabfgs = CMABFGS(
