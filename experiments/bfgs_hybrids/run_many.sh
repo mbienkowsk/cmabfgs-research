@@ -9,8 +9,6 @@ CONFIGURATIONS=(
   "100 50 25"
   "100 50 50"
   "100 50 100"
-  "100 50 200"
-  "100 50 500"
 )
 
 OBJECTIVES=(
@@ -24,9 +22,22 @@ OBJECTIVES=(
   "CEC7"
 )
 
-echo "Submitting job: DIMENSIONS=$DIM, N_RUNS=$RUNS, SWITCH_AFTER=$SWITCH, OBJECTIVE=$OBJ"
-sbatch experiments/bfgs_hybrids/run.sbatch
-export DIMENSIONS=$DIM
+
+submit_job() {
+  DIM=$1
+  RUNS=$2
+  SWITCH=$3
+  OBJ=$4
+
+  export DIMENSIONS=$DIM
+  export N_RUNS=$RUNS
+  export SWITCH_AFTER=$SWITCH
+  export OBJECTIVE=$OBJ
+
+  echo "Submitting job: DIMENSIONS=$DIM, N_RUNS=$RUNS, SWITCH_AFTER=$SWITCH, OBJECTIVE=$OBJ"
+  sbatch experiments/bfgs_hybrids/run.sbatch
+}
+
 MAX_JOBS=10
 job_count=0
 
@@ -42,4 +53,7 @@ for CONFIG in "${CONFIGURATIONS[@]}"; do
       ((job_count--))
       echo "A job finished. Jobs running: $job_count"
     fi
+  done
+done
+
 wait
