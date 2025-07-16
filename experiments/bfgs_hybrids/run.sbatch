@@ -30,10 +30,11 @@ DEFAULT_SWITCH_AFTER=200
 : "${DIMENSIONS:=$DEFAULT_DIMENSIONS}"
 : "${N_RUNS:=$DEFAULT_N_RUNS}"
 : "${SWITCH_AFTER:=$DEFAULT_SWITCH_AFTER}"
+: "${OBJECTIVE:="This will fail when not set"}
 
-echo "Running with dimensions: $DIMENSIONS and number of runs: $N_RUNS. Switch after: $SWITCH_AFTER."
+echo "Running on $OBJECTIVE with dimensions: $DIMENSIONS and number of runs: $N_RUNS. Switch after: $SWITCH_AFTER."
 
-JOB_NAME="bfgs_hybrids_dim_${DIMENSIONS}_nruns_${N_RUNS}"
+JOB_NAME="bfgs_hybrids_dim_${DIMENSIONS}_nruns_${N_RUNS}_switch_${SWITCH_AFTER}_objective_${OBJECTIVE}""
 scontrol update JobName=$JOB_NAME JobId=$SLURM_JOB_ID
 
 cd $SLURM_SUBMIT_DIR
@@ -52,4 +53,4 @@ pip install -r requirements.txt
 
 # Run the Python script
 echo "Running the bfgs_hybrids"
-python3 -m experiments.bfgs_hybrids.main --dimensions $DIMENSIONS --n_runs $N_RUNS
+python3 -m experiments.bfgs_hybrids.main

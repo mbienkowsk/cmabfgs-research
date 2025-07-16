@@ -34,7 +34,8 @@ POPULATION_SIZE = 4 * DIMENSIONS
 
 
 RESULT_DIR = (
-    Path(__file__).parent / f"results/dim_{DIMENSIONS}/K_{SWITCH_AFTER_ITERATIONS}"
+    Path(__file__).parent
+    / f"results/fun_{OBJECTIVE}_dim_{DIMENSIONS}/K_{SWITCH_AFTER_ITERATIONS}"
 )
 VANILLA_RESULT_DIR = RESULT_DIR / "vanilla"
 BFGS_RESULT_DIR = RESULT_DIR / "bfgs"
@@ -126,7 +127,8 @@ def visualize_results(result_path: Path):
         )
 
     dim = extract_dim_from_path(result_path)
-    plt.title(f"Funkcja pokrzywiona w {dim} wymiarach, K = {SWITCH_AFTER_ITERATIONS}")
+    objective = extract_objective_from_path(result_path)
+    plt.title(f"Funkcja {objective} w {dim} wymiarach, K = {SWITCH_AFTER_ITERATIONS}")
     plt.xlabel("Liczba ewaluacji f. celu")
     plt.ylabel("Najlepsze znalezione rozwiązanie")
     plt.yscale("log")
@@ -147,6 +149,14 @@ def extract_k_from_path(path: Path):
     if match:
         return int(match.group(1))
     raise ValueError(f"Could not extract dimension from path: {path}")
+
+
+def extract_objective_from_path(path: Path):
+    """Extracts the objective function name from a path containing 'FUN_<name>_'."""
+    match = re.search(r"FUN_([^_]+)", str(path).upper())
+    if match:
+        return match.group(1)
+    raise ValueError(f"Could not extract objective from path: {path}")
 
 
 def single_run(idx: int):
