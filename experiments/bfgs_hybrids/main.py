@@ -28,14 +28,15 @@ BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 SWITCH_AFTER_ITERATIONS = int(os.environ["SWITCH_AFTER"])
-OBJECTIVE = get_function_by_name(os.environ["OBJECTIVE"])
+OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+OBJECTIVE = get_function_by_name(OBJECTIVE_NAME)
 MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
 
 RESULT_DIR = (
     Path(__file__).parent
-    / f"results/fun_{OBJECTIVE}_dim_{DIMENSIONS}/K_{SWITCH_AFTER_ITERATIONS}"
+    / f"results/fun_{OBJECTIVE_NAME}_dim_{DIMENSIONS}/K_{SWITCH_AFTER_ITERATIONS}"
 )
 VANILLA_RESULT_DIR = RESULT_DIR / "vanilla"
 BFGS_RESULT_DIR = RESULT_DIR / "bfgs"
