@@ -133,6 +133,7 @@ def visualize_results(result_path: Path):
     plt.xlabel("Liczba ewaluacji f. celu")
     plt.ylabel("Najlepsze znalezione rozwiązanie")
     plt.yscale("log")
+    plt.xscale("log")
     plt.savefig(result_path / f"plot.png")
 
 
