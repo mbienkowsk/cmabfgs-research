@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+import numpy as np
+from loguru import logger
+
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmabfgs import CMABFGSState, CMAESState
 from lib.optimizers.cmaes import CMAESState
@@ -45,3 +48,34 @@ class BestSoFar(Metric):
 
     def collect_bfgs(self, state: BFGSState):
         return state.best_solutions[-1] if state.best_solutions else None
+
+
+class CovarianceMatrixConditionNumber(Metric):
+    def key(self):
+        return "cov_cond"
+
+    def collect_cmaes(self, state: CMAESState):
+        if state.covariance_matrix is None:
+            logger.warning("CMA-ES covariance matrix is None.")
+            return
+        return np.linalg.cond(state.covariance_matrix)
+
+
+class CovarianceMatrixDifferenceNorm(Metric):
+    current_covariance_matrix: np.ndarray | None = None
+
+    def key(self):
+        return "cov_diff_sq"
+
+    def collect_cmaes(self, state: CMAESState):
+        if state.covariance_matrix is None:
+            logger.warning("CMA-ES covariance matrix is None.")
+            return 0
+
+        prev = self.current_covariance_matrix
+        self.current_covariance_matrix = state.covariance_matrix
+
+        if prev is None:
+            return 0
+
+        return np.linalg.norm(self.current_covariance_matrix - prev)

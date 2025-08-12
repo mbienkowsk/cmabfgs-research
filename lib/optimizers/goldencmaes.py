@@ -5,7 +5,7 @@ from cmaes import CMA
 from scipy.optimize import golden
 
 if TYPE_CHECKING:
-    from lib.callbacks import ExperimentCallback
+    from lib.callbacks import MetricsCollector
 
 from lib.optimizers.base import Optimizer
 from lib.stopping import CMAESEarlyStopping
@@ -40,13 +40,13 @@ class GoldenCMAES(Optimizer):
 
         self.cma.tell(solutions)
 
-    def optimize(self, callback: "ExperimentCallback"):
+    def optimize(self, callback: "MetricsCollector"):
         for _ in range(self.n_cmaes_iterations):
             if self.stopping(self.state):
                 return
 
             self.cma_step()
-            callback(self.cma)
+            callback(self.state)
 
         d = self.cma._C @ gradient_central(self.fun, self.cma.mean)
 

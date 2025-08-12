@@ -16,6 +16,7 @@ from .base import Optimizer
 @dataclass
 class CMAESState:
     counter: EvalCounter
+    covariance_matrix: np.ndarray
     mean: np.ndarray = field(default_factory=lambda: np.array([]))
     population_evaluations: list[float] = field(default_factory=list)
 
@@ -43,6 +44,7 @@ class CMAES(Optimizer):
         self.seed = seed
         self.stopper = stopper
         self.state = CMAESState(
+            covariance_matrix=self.inner._C,
             counter=fun,
         )
         self.callback = callback
@@ -59,6 +61,7 @@ class CMAES(Optimizer):
     def update_state(self, population_evaluations: list[float]):
         self.state.population_evaluations = population_evaluations
         self.state.mean = self.mean
+        self.state.covariance_matrix = self.inner._C
 
     def step(self):
         solutions = []
