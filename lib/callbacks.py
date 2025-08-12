@@ -16,18 +16,20 @@ class HasCounter(Protocol):
 class MetricsCollector:
     metrics: Sequence[Metric]
     collect_method: str
-    data: list = field(default_factory=list)
+    data: pd.DataFrame = field(default_factory=pd.DataFrame)
 
     def __call__(self, state: HasCounter):
         evals = state.counter.num_evaluations
-        entry = {"num_evaluations": evals}
+        entry = {"num_evaluations": [evals]}
         for metric in self.metrics:
             collect_fn = getattr(metric, f"collect_{self.collect_method}")
-            entry[metric.key()] = collect_fn(state)
-        self.data.append(entry)
+            entry[metric.key()] = [collect_fn(state)]
+
+        self.data = pd.concat((self.data, pd.DataFrame(entry)))
 
     def as_dataframe(self):
-        return pd.DataFrame(self.data)
+        self.data.set_index("num_evaluations", inplace=True)
+        return self.data
 
     def export_to_csv(self, path: Path):
-        self.as_dataframe().to_csv(path, index=False)
+        self.as_dataframe().to_csv(path)
