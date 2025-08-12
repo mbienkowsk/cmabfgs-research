@@ -1,4 +1,6 @@
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 import numpy as np
@@ -53,3 +55,19 @@ def one_dimensional(fun: Callable, x, d):
         return fun(x + alpha * d)
 
     return wrapper
+
+
+def extract_dim_from_path(path: Path):
+    """Extracts the dimension from a path containing 'DIM_<number>'."""
+    match = re.search(r"DIM_(\d+)", str(path).upper())
+    if match:
+        return int(match.group(1))
+    raise ValueError(f"Could not extract dimension from path: {path}")
+
+
+def extract_objective_from_path(path: Path):
+    """Extracts the objective function name from a path containing 'FUN_<name>_'."""
+    match = re.search(r"FUN_([^_]+)", str(path).upper())
+    if match:
+        return match.group(1)
+    raise ValueError(f"Could not extract objective from path: {path}")

@@ -22,7 +22,8 @@ from lib.optimizers import BFGS, CMAES, LBFGS
 from lib.optimizers.cmabfgs import CMABFGS
 from lib.serde import load_and_interpolate_results
 from lib.stopping import CMAESEarlyStopping
-from lib.util import EvalCounter
+from lib.util import (EvalCounter, extract_dim_from_path,
+                      extract_objective_from_path)
 
 BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
@@ -137,28 +138,12 @@ def visualize_results(result_path: Path):
     plt.savefig(result_path / f"plot.png")
 
 
-def extract_dim_from_path(path: Path):
-    """Extracts the dimension from a path containing 'DIM_<number>'."""
-    match = re.search(r"DIM_(\d+)", str(path).upper())
-    if match:
-        return int(match.group(1))
-    raise ValueError(f"Could not extract dimension from path: {path}")
-
-
 def extract_k_from_path(path: Path):
     """Extracts the k-value from a path containing 'K_<number>'."""
     match = re.search(r"K_(\d+)", str(path).upper())
     if match:
         return int(match.group(1))
     raise ValueError(f"Could not extract dimension from path: {path}")
-
-
-def extract_objective_from_path(path: Path):
-    """Extracts the objective function name from a path containing 'FUN_<name>_'."""
-    match = re.search(r"FUN_([^_]+)", str(path).upper())
-    if match:
-        return match.group(1)
-    raise ValueError(f"Could not extract objective from path: {path}")
 
 
 def single_run(idx: int):
