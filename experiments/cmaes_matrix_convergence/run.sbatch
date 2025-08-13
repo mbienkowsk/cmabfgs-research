@@ -1,54 +1,33 @@
 #!/bin/bash -l
 
-# Name of the job
-#SBATCH -J placeholder
-
-# One node, one task, one task per node
+#SBATCH --array=0-$(($(wc -l < config.txt)-1))%10
 #SBATCH --ntasks=1
-
-# Memory limit
 #SBATCH --mem=1GB
-
-# num of cpus per task, time limit HH:MM:SS
 #SBATCH --cpus-per-task=25
 #SBATCH --time=72:00:00
-# Grant name
 #SBATCH -A plgcmaes
-
-# Partition (plgrid for 72 hours)
 #SBATCH -p plgrid
+#SBATCH --output="logs/%A_%a.out"
+#SBATCH --error="logs/%A_%a.err"
+#SBATCH -J bfgs_hybrids
 
-# Output files
-#SBATCH --output="out.log"
-#SBATCH --error="err.log"
+# Read parameters for this array task
+read OBJECTIVE DIMENSIONS N_RUNS SWITCH_AFTER < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/cmaes_matrix_convergence/config.txt)
 
-DEFAULT_DIMENSIONS=5
-DEFAULT_N_RUNS=3
-
-# Set job name based on arguments
-: "${DIMENSIONS:=$DEFAULT_DIMENSIONS}"
-: "${N_RUNS:=$DEFAULT_N_RUNS}"
-: "${OBJECTIVE:="This will fail when not set"}
-
-echo "Running on $OBJECTIVE with dimensions: $DIMENSIONS and number of runs: $N_RUNS."
-
-JOB_NAME="bfgs_hybrids_dim_${DIMENSIONS}_nruns_${N_RUNS}_objective_${OBJECTIVE}""
-scontrol update JobName=$JOB_NAME JobId=$SLURM_JOB_ID
+echo "Running on $OBJECTIVE with dimensions: $DIMENSIONS, runs: $N_RUNS, switch_after: $SWITCH_AFTER"
 
 cd $SLURM_SUBMIT_DIR
 
-# Load Python and activate your environment
+# Load Python
 module load ~/modules/3.13.2
 
-echo "Creating venv"
+# Create venv
 python3 -m venv .venv
 source .venv/bin/activate  
 
 # Install dependencies
-echo "Installing dependencies"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run the Python script
-echo "Running the bfgs_hybrids"
+# Run experiment
 python3 -m experiments.bfgs_hybrids.main
