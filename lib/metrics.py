@@ -41,14 +41,23 @@ class MeanEvaluation(Metric):
 
 
 class BestSoFar(Metric):
+    def __init__(self, optimum: float):
+        # this is needed to store the difference from the global optimum
+        # instead of the function value
+        self.optimum = optimum
+
     def key(self):
         return "best"
 
     def collect_cmaes(self, state: CMAESState):
-        return state.best_solutions[-1] if state.best_solutions else None
+        return (
+            state.best_solutions[-1] - self.optimum if state.best_solutions else pd.NA
+        )
 
     def collect_bfgs(self, state: BFGSState):
-        return state.best_solutions[-1] if state.best_solutions else None
+        return (
+            state.best_solutions[-1] - self.optimum if state.best_solutions else pd.NA
+        )
 
 
 class CovarianceMatrixConditionNumber(Metric):

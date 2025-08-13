@@ -40,20 +40,26 @@ def elliptic_grad(x):
 Elliptic = OptFun(elliptic, elliptic_grad, "Elliptic", 0)
 
 
-def get_function_by_name(name: str, dim: int = 10) -> Callable:
+def get_function_by_name(
+    name: str, dim: int = 10, with_optimum: bool = False
+) -> Callable | tuple[Callable, int]:
     """Get a function object from a name passed from an env var.
     If a function is prefixed with CEC, it's assumed to be from CEC2017
     with the given number.
 
-    The dim argument only matters for CEC functions."""
+    The dim argument only matters for CEC functions.
+    """
 
     if name == "Elliptic":
-        return Elliptic.fun
+        return (Elliptic.fun, 0) if with_optimum else Elliptic.fun
 
     elif name.startswith("CEC"):
         try:
             idx = int(name[3:])
-            return get_cec2017_for_dim(idx, dim).evaluate
+            fn = get_cec2017_for_dim(idx, dim)
+            return (
+                (fn.evaluate, fn.f_global) if with_optimum else fn.evaluate
+            )  # pyright: ignore[reportReturnType]
         except ValueError:
             raise ValueError(f"Invalid CEC function name: {name}")
         except Exception as e:

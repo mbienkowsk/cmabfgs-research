@@ -3,7 +3,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Callable, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,7 +30,10 @@ OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 # DIMENSIONS = 5
 # NUM_RUNS = 3
 # OBJECTIVE_NAME = "CEC10"
-OBJECTIVE = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
+OBJECTIVE, OPTIMUM = cast(
+    tuple[Callable, float],
+    get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
+)
 MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
@@ -42,7 +45,7 @@ RESULT_DIR = Path(__file__).parent / f"results/fun_{OBJECTIVE_NAME}_dim_{DIMENSI
 def run_vanilla(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [
-        BestSoFar(),
+        BestSoFar(OPTIMUM),
         CovarianceMatrixConditionNumber(),
         CovarianceMatrixDifferenceNorm(),
     ]
@@ -81,8 +84,10 @@ def visualize_results(read_from: Path, save_to: Path):
     ax2.set_ylabel("cov_diff_sq")
 
     ax3.plot(data.index, data["best"])
-    ax3.set_title("Wartość f. straty w najlepszym punkcie vs liczba ewaluacji")
-    ax3.set_ylabel("loss(x_best)")
+    ax3.set_title(
+        "Różnica między wartością f.straty i minimum globalnym w najlepszym punkcie vs liczba ewaluacji"
+    )
+    ax3.set_ylabel("loss(x_best) - min_global")
 
     for ax in (ax1, ax2, ax3):
         ax.set_yscale("log")
