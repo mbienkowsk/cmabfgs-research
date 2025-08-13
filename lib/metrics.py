@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 from lib.optimizers.bfgs import BFGSState
@@ -57,7 +58,7 @@ class CovarianceMatrixConditionNumber(Metric):
     def collect_cmaes(self, state: CMAESState):
         if state.covariance_matrix is None:
             logger.warning("CMA-ES covariance matrix is None.")
-            return
+            return pd.NA
         return np.linalg.cond(state.covariance_matrix)
 
 
@@ -70,12 +71,12 @@ class CovarianceMatrixDifferenceNorm(Metric):
     def collect_cmaes(self, state: CMAESState):
         if state.covariance_matrix is None:
             logger.warning("CMA-ES covariance matrix is None.")
-            return 0
+            return pd.NA
 
         prev = self.current_covariance_matrix
         self.current_covariance_matrix = state.covariance_matrix
 
         if prev is None:
-            return 0
+            return pd.NA
 
         return np.linalg.norm(self.current_covariance_matrix - prev)

@@ -25,7 +25,11 @@ class MetricsCollector:
             collect_fn = getattr(metric, f"collect_{self.collect_method}")
             entry[metric.key()] = [collect_fn(state)]
 
-        self.data = pd.concat((self.data, pd.DataFrame(entry)))
+        entry_df = pd.DataFrame(entry).dropna()
+        if self.data.empty:
+            self.data = entry_df
+        else:
+            self.data = pd.concat([self.data, entry_df])
 
     def as_dataframe(self):
         self.data.set_index("num_evaluations", inplace=True)
