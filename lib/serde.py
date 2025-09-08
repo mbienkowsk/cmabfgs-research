@@ -1,4 +1,5 @@
 import glob
+from collections.abc import Iterable
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,12 @@ def load_results_from_directory(dir_path: Path):
         pd.read_csv(path, index_col="num_evaluations")
         for path in glob.glob(f"{dir_path}/*.csv")
     ]
+    return aggregate_dataframes(dfs)
+
+
+def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
+    """aggregate dataframes with the same columns where
+    num_evaluations is the index"""
     common_idx = sorted(set().union(*[df.index for df in dfs]))
     dfs_interp = [df.reindex(common_idx).interpolate(method="index") for df in dfs]
 
@@ -20,5 +27,5 @@ def load_results_from_directory(dir_path: Path):
     return pd.DataFrame(
         mean,
         index=common_idx,  # pyright: ignore[reportArgumentType]
-        columns=dfs[0].columns,
+        columns=dfs_interp[0].columns,
     )
