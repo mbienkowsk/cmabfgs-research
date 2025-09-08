@@ -1,6 +1,5 @@
 #!/bin/bash -l
 
-#SBATCH --array=0-$(($(wc -l < config.txt)-1))%10
 #SBATCH --ntasks=1
 #SBATCH --mem=1GB
 #SBATCH --cpus-per-task=25
@@ -9,25 +8,21 @@
 #SBATCH -p plgrid
 #SBATCH --output="logs/%A_%a.out"
 #SBATCH --error="logs/%A_%a.err"
-#SBATCH -J bfgs_hybrids
+#SBATCH -J find_switch_condition
+#SBATCH --chdir .
 
 # Read parameters for this array task
-read OBJECTIVE DIMENSIONS N_RUNS SWITCH_AFTER < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_condition/config.txt)
+read OBJECTIVE DIMENSIONS N_RUNS < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_condition/config.txt)
+export OBJECTIVE DIMENSIONS N_RUNS
 
 echo "Running on $OBJECTIVE with dimensions: $DIMENSIONS, runs: $N_RUNS, switch_after: $SWITCH_AFTER"
 
-cd $SLURM_SUBMIT_DIR
-
 # Load Python
-module load ~/modules/3.13.2
+module load trytonp/python3/3.13.0
 
-# Create venv
-python3 -m venv .venv
-source .venv/bin/activate  
-
-# Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+source /home/plgrid/plgmbienkowski/thesis/.venv/bin/activate  
+which python3
+python3 --version
 
 # Run experiment
-python3 -m experiments.find_switch_condition.main
+/home/plgrid/plgmbienkowski/thesis/.venv/bin/python3 -m experiments.find_switch_condition.main
