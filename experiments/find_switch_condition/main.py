@@ -21,16 +21,10 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
-# DIMENSIONS = int(os.environ["DIMENSIONS"])
-# NUM_RUNS = int(os.environ["N_RUNS"])
-# OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-# SWITCH_AFTER_VALUES = list(map(int, "-".split(os.environ["SWITCH_AFTER"])))
-
-
-DIMENSIONS = 10
-NUM_RUNS = 10
-OBJECTIVE_NAME = "CEC1"
-SWITCH_AFTER_VALUES = [300]
+DIMENSIONS = int(os.environ["DIMENSIONS"])
+NUM_RUNS = int(os.environ["N_RUNS"])
+OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+SWITCH_AFTER_VALUES = list(map(int, "-".split(os.environ["SWITCH_AFTER"])))
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
