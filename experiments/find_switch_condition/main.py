@@ -21,10 +21,17 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
-DIMENSIONS = int(os.environ["DIMENSIONS"])
-NUM_RUNS = int(os.environ["N_RUNS"])
-OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-SWITCH_AFTER_VALUES = list(map(int, "-".split(os.environ["SWITCH_AFTER"])))
+# DIMENSIONS = int(os.environ["DIMENSIONS"])
+# NUM_RUNS = int(os.environ["N_RUNS"])
+# OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+# SWITCH_AFTER_VALUES = list(map(int, "-".split(os.environ["SWITCH_AFTER"])))
+
+
+DIMENSIONS = 10
+NUM_RUNS = 10
+OBJECTIVE_NAME = "CEC1"
+SWITCH_AFTER_VALUES = [300]
+
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
@@ -33,7 +40,7 @@ MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
 
-RESULT_DIR = Path(__file__).parent / f"results/fun_{OBJECTIVE_NAME}_dim_{DIMENSIONS}"
+RESULT_DIR = Path(__file__).parent / "results"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
 
@@ -92,6 +99,7 @@ def single_run(idx: int) -> tuple[DataFrame, list[DataFrame]]:
 
 
 def visualize_results(vanilla: DataFrame, cmabfgs: list[DataFrame], save_to: Path):
+    plt.figure(figsize=(9, 6))
     plt.plot(vanilla.index, vanilla["best"], label="Klasyczny CMA-ES")
     for i, val in enumerate(SWITCH_AFTER_VALUES):
         plt.plot(
@@ -99,25 +107,41 @@ def visualize_results(vanilla: DataFrame, cmabfgs: list[DataFrame], save_to: Pat
             cmabfgs[i]["best"],
             label=f"CMABFGS (switch po {val} ewaluacjach/{val//POPULATION_SIZE} iteracjach)",
         )
+    ymin, ymax = plt.ylim()
+    plt.vlines(
+        x=SWITCH_AFTER_VALUES, ymin=ymin, ymax=ymax, colors="r", linestyles="dashed"
+    )
     plt.yscale("log")
     plt.xscale("log")
-    plt.legend()
     plt.grid(which="both")
     plt.xlabel("Liczba ewaluacji")
+    plt.legend()
     plt.ylabel("best so far")
     plt.title(f"CMA-ES vs CMABFGS, funkcja {OBJECTIVE_NAME}, {DIMENSIONS} wymiarów")
-    plt.savefig(save_to / f"{OBJECTIVE_NAME}_{DIMENSIONS}.png")
+    plt.savefig(save_to / f"{OBJECTIVE_NAME}_{DIMENSIONS}.png", dpi=300)
 
 
 def main():
     with mp.Pool(mp.cpu_count()) as pool:
         return_values = pool.map(single_run, range(1, NUM_RUNS + 1))
-        vanilla_agg = aggregate_dataframes(res[0] for res in return_values)
+        vanilla_agg = aggregate_dataframes([res[0] for res in return_values])
         cmabfgs_aggs = [
-            aggregate_dataframes(res[1][i] for res in return_values)
+            aggregate_dataframes([res[1][i] for res in return_values])
             for i in range(len(SWITCH_AFTER_VALUES))
         ]
-        visualize_results(vanilla_agg, cmabfgs_aggs, PLOT_EXPORT_DIR)
+        # Prefix columns
+        vanilla_prefixed = vanilla_agg.add_prefix("vanilla_")
+        cmabfgs_prefixed = [
+            cmabfgs_aggs[i].add_prefix(f"cmabfgs_{SWITCH_AFTER_VALUES[i]}_")
+            for i in range(len(SWITCH_AFTER_VALUES))
+        ]
+        # Concatenate along columns
+        combined = vanilla_prefixed
+        for df in cmabfgs_prefixed:
+            combined = combined.join(df, how="outer")
+        # Save to CSV
+        combined.to_csv(RESULT_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv")
+        visualize_results(vanilla_agg, cmabfgs_aggs, save_to=PLOT_EXPORT_DIR)
 
 
 if __name__ == "__main__":
