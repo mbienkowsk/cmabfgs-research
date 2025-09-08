@@ -12,7 +12,7 @@
 #SBATCH --chdir .
 
 # Read parameters for this array task
-read OBJECTIVE DIMENSIONS N_RUNS < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_condition/config.txt)
+read OBJECTIVE DIMENSIONS N_RUNS SWITCH_AFTER < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_condition/config.txt)
 export OBJECTIVE DIMENSIONS N_RUNS
 
 echo "Running on $OBJECTIVE with dimensions: $DIMENSIONS, runs: $N_RUNS, switch_after: $SWITCH_AFTER"
