@@ -2,6 +2,7 @@ import multiprocessing as mp
 import os
 import shutil
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Callable, cast
 
@@ -143,7 +144,9 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level="ERROR")
 
     if os.path.exists(RESULT_DIR):
-        shutil.rmtree(RESULT_DIR)
+        # multiple scripts in parallel cause a race here
+        with suppress(FileNotFoundError):
+            shutil.rmtree(RESULT_DIR)
 
     os.makedirs(RESULT_DIR)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
