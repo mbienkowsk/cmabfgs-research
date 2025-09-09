@@ -24,7 +24,8 @@ BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-SWITCH_AFTER_VALUES = list(map(int, "-".split(os.environ["SWITCH_AFTER"])))
+print(os.environ["SWITCH_AFTER"])
+SWITCH_AFTER_VALUES = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
@@ -142,10 +143,7 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(sys.stderr, level="ERROR")
 
-    if os.path.exists(RESULT_DIR):
-        shutil.rmtree(RESULT_DIR)
-
-    os.makedirs(RESULT_DIR)
+    os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
 
     main()
