@@ -10,6 +10,7 @@ from loguru import logger
 from pandas import DataFrame
 from sympy import prime
 
+from experiments.bfgs_hybrids.main import SWITCH_AFTER_ITERATIONS
 from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
@@ -24,6 +25,10 @@ DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
+# DIMENSIONS = 10
+# NUM_RUNS = 3
+# OBJECTIVE_NAME = "CEC2"
+# SWITCH_AFTER_ITERATIONS = [40, 80, 300]
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
@@ -108,7 +113,6 @@ def visualize_results(bfgs: DataFrame, cmabfgs: DataFrame, save_to: Path):
     plt.xscale("log")
     plt.grid(which="both")
     plt.xlabel("Liczba ewaluacji")
-    plt.legend()
     plt.ylabel("best so far")
     plt.title(
         f"BFGS vs CMAES vs CMABFGS, funkcja {OBJECTIVE_NAME}, {DIMENSIONS} wymiarów"
