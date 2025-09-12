@@ -20,7 +20,6 @@ class CMABFGSState:
     cmaes_state: CMAESState
     bfgs_state: BFGSState
     counter: EvalCounter
-    best_so_far: float = float("inf")
 
 
 class CMABFGS(Optimizer):
