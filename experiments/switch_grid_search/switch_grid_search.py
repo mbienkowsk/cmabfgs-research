@@ -10,7 +10,6 @@ from loguru import logger
 from pandas import DataFrame
 from sympy import prime
 
-from experiments.bfgs_hybrids.main import SWITCH_AFTER_ITERATIONS
 from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
