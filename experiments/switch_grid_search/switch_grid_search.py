@@ -40,6 +40,9 @@ POPULATION_SIZE = 4 * DIMENSIONS
 RESULT_DIR = Path(__file__).parent / "results"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
+colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
+plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
+
 
 def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
@@ -84,23 +87,22 @@ def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
     return cmabfgs, bfgs
 
 
-def visualize_results(bfgs: DataFrame, cmabfgs: DataFrame, save_to: Path):
+def visualize_results(
+    bfgs: DataFrame,
+    cmabfgs: DataFrame,
+    save_to: Path = PLOT_EXPORT_DIR,
+    dimensions=DIMENSIONS,
+    switch_after_iterations=SWITCH_AFTER_ITERATIONS,
+    function_name: str | None = None,
+):
+    population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
     plt.plot(bfgs.index, bfgs["best"], label="BFGS")
-    for i, val in enumerate(SWITCH_AFTER_ITERATIONS):
+    for i, val in enumerate(switch_after_iterations):
         plt.plot(
             cmabfgs.index,
             cmabfgs[f"best_{val}"],
-            label=f"CMABFGS (switch po {val} iteracjach/{val*POPULATION_SIZE} ewaluacjach)",
-        )
-
-        ymin, ymax = plt.ylim()
-        plt.vlines(
-            x=np.array(SWITCH_AFTER_ITERATIONS) * POPULATION_SIZE,
-            ymin=ymin,
-            ymax=ymax,
-            colors="r",
-            linestyles="dashed",
+            label=f"{val} it/{val*population_size} eval)",
         )
 
     plt.plot(
@@ -108,15 +110,26 @@ def visualize_results(bfgs: DataFrame, cmabfgs: DataFrame, save_to: Path):
         cmabfgs[f"best_vanilla_cmaes"],
         label=f"CMA-ES",
     )
+
+    ymin, ymax = plt.ylim()
+    plt.vlines(
+        x=np.array(switch_after_iterations) * population_size,
+        ymin=ymin,
+        ymax=ymax,
+        colors="r",
+        linestyles="dashed",
+        zorder=1.99,
+    )
+
     plt.yscale("log")
     plt.xscale("log")
     plt.grid(which="both")
     plt.xlabel("Liczba ewaluacji")
     plt.ylabel("best so far")
-    plt.title(
-        f"BFGS vs CMAES vs CMABFGS, funkcja {OBJECTIVE_NAME}, {DIMENSIONS} wymiarów"
-    )
-    plt.savefig(save_to / f"{OBJECTIVE_NAME}_{DIMENSIONS}.png", dpi=300)
+    obj_name = function_name if function_name is not None else OBJECTIVE_NAME
+    plt.title(f"BFGS vs CMAES vs CMABFGS, funkcja {obj_name}, {dimensions} wymiarów")
+    plt.legend()
+    plt.savefig(save_to / f"{obj_name}_{dimensions}.png", dpi=300)
 
 
 def main():
@@ -131,8 +144,11 @@ def main():
     # Concatenate along columns
     combined = bfgs_prefixed.join(cmabfgs_agg, how="outer")
     # Save to CSV
-    combined.to_csv(RESULT_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv")
-    visualize_results(bfgs_agg, cmabfgs_agg, save_to=PLOT_EXPORT_DIR)
+    combined.to_csv(
+        RESULT_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
+        index_label="num_evaluations",
+    )
+    visualize_results(bfgs_agg, cmabfgs_agg)
 
 
 if __name__ == "__main__":
