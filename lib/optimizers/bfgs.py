@@ -43,6 +43,10 @@ class BFGS(Optimizer):
         self.callback = callback
 
     def optimize(self):
+        self.state.counter(
+            self.x0
+        )  # ensures there is a single evaluation even if bfgs quits instantly
+        self.callback(self.state)
 
         def callback_wrapper(intermediate_result: OptimizeResult):
             self.state.current_result = intermediate_result
