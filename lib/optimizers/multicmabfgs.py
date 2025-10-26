@@ -4,13 +4,15 @@ from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 from cmaes import CMA
+from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
 from lib.callbacks import HasCounter
 from lib.optimizers.base import Optimizer
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
-from lib.stopping import CMAESEarlyStopping
+from lib.stopping import (BFBGSEarlyStopping, CMAESEarlyStopping,
+                          StopOptimization)
 from lib.util import EvalCounter
 
 if TYPE_CHECKING:
@@ -85,6 +87,7 @@ class MultiCMABFGS(Optimizer):
             fun,
             self.cma._C,
         )
+        self.bfgs_stopper = BFBGSEarlyStopping(max_evals=self.cmaes_stopper.max_evals)
         bfgs_state = BFGSState(fun)
         self.state = MultiCMABFGSState(
             n_cmaes_iterations, "CMAES", cmaes_state, bfgs_state
@@ -129,18 +132,23 @@ class MultiCMABFGS(Optimizer):
             self.callback(cast(HasCounter, self.state))
 
             def callback_wrapper(intermediate_result: OptimizeResult):
+                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
                 self.state.bfgs_state.current_result = intermediate_result
                 self.callback(cast(HasCounter, self.state))
 
-            minimize(
-                self.state.counter,
-                self.cma.mean,
-                method="BFGS",
-                callback=callback_wrapper,
-                options={
-                    "gtol": 1e-30,
-                    "hess_inv0": (self.cma._C + self.cma._C.T) / 2,
-                    # TODO: why is this still happening? investigate
-                },
-            )
+            try:
+                minimize(
+                    self.state.counter,
+                    self.cma.mean,
+                    method="BFGS",
+                    callback=callback_wrapper,
+                    options={
+                        "gtol": 1e-30,
+                        "hess_inv0": (self.cma._C + self.cma._C.T) / 2,
+                        # TODO: why is this still happening? investigate
+                    },
+                )
+            except StopOptimization as e:
+                logger.info(f"BFGS stopped early: {e}")
+
         self.finish_cmaes()

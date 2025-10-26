@@ -5,6 +5,8 @@ import numpy as np
 from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
+from lib.stopping import BFBGSEarlyStopping, StopOptimization
+
 if TYPE_CHECKING:
     from lib.callbacks import MetricsCollector
 
@@ -35,11 +37,13 @@ class BFGS(Optimizer):
         seed: int,
         fun: EvalCounter,
         callback: "MetricsCollector",
+        stopper: BFBGSEarlyStopping,
     ):
         self.x0 = x0
         self.inner = None
         self.seed = seed
         self.state = BFGSState(fun)
+        self.stopper = stopper
         self.callback = callback
 
     def optimize(self):
@@ -49,15 +53,22 @@ class BFGS(Optimizer):
         self.callback(self.state)
 
         def callback_wrapper(intermediate_result: OptimizeResult):
+            self.stopper(self.state)  # raises an exception
             self.state.current_result = intermediate_result
             return self.callback(self.state)
 
-        result = minimize(
-            self.state.counter,
-            self.x0,
-            method="BFGS",
-            callback=callback_wrapper,
-        )
+        try:
+            result = minimize(
+                self.state.counter,
+                self.x0,
+                method="BFGS",
+                callback=callback_wrapper,
+                options={
+                    "gtol": 1e-30,
+                },
+            )
+        except StopOptimization as e:
+            logger.info(f"BFGS stopped early: {e}")
 
         if not result.success:
             logger.warning(f"BFGS did not converge: {result.message}")

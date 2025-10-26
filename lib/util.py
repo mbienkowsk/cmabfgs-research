@@ -1,4 +1,3 @@
-import fcntl
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,12 +38,6 @@ class EvalCounter:
     def __call__(self, x):
         self.num_evaluations += 1
         y = self.fun(x)
-
-        if y < 0:
-            with open("negative_eval.log", "a") as handle:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-                handle.write(f"Negative evaluation: {y} at {x}\n")
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
         if not self.best_solutions or y < self.best_solutions[-1]:
             self.best_solutions.append(y)
