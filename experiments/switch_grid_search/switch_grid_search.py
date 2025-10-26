@@ -97,7 +97,7 @@ def visualize_results(
 ):
     population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
-    plt.plot(bfgs.index, bfgs["best"], label="BFGS")
+    plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
     for i, val in enumerate(switch_after_iterations):
         plt.plot(
             cmabfgs.index,
@@ -108,6 +108,7 @@ def visualize_results(
     plt.plot(
         cmabfgs.index,
         cmabfgs[f"best_vanilla_cmaes"],
+        linestyle="dashed",
         label=f"CMA-ES",
     )
 
@@ -134,7 +135,7 @@ def visualize_results(
 
 def main():
     with mp.Pool(mp.cpu_count()) as pool:
-        rv = pool.map(single_run, range(1, NUM_RUNS + 1))
+        rv = pool.map(single_run, range(2, 3))
 
     cmabfgs_agg = aggregate_dataframes([val[0] for val in rv])
     bfgs_agg = aggregate_dataframes([val[1] for val in rv])
@@ -153,7 +154,7 @@ def main():
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, level="ERROR")
+    logger.add(sys.stderr, level="WARNING")
 
     os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
