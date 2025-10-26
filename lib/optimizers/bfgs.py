@@ -73,12 +73,11 @@ class BFGS(Optimizer):
                     "gtol": 1e-30,
                 },
             )
+            if not result.success:
+                logger.warning(f"BFGS did not converge: {result.message}")
+            else:
+                logger.info(f"BFGS converged successfully, message: {result.message}")
         except StopOptimization as e:
             logger.info(f"BFGS stopped early: {e}")
         except OutOfBoundsError as e:
             logger.info(f"BFGS stopped due to out-of-bounds: {e}")
-
-        if not result.success:
-            logger.warning(f"BFGS did not converge: {result.message}")
-        else:
-            logger.info(f"BFGS converged successfully, message: {result.message}")
