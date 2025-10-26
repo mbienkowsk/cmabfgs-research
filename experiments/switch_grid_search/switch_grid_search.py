@@ -24,11 +24,11 @@ DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 10
-# NUM_RUNS = 3
-# OBJECTIVE_NAME = "CEC2"
-# SWITCH_AFTER_ITERATIONS = [40, 80, 300]
-
+# DIMENSIONS = 100
+# NUM_RUNS = 5
+# OBJECTIVE_NAME = "CEC21"
+# SWITCH_AFTER_ITERATIONS = [750]
+#
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
@@ -58,6 +58,7 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
         POPULATION_SIZE,
         callback,
         CMAESEarlyStopping(MAXEVALS, tolfun=1e-9),
+        bounds=(-BOUNDS, BOUNDS),
     )
     optimizer.optimize()
     return callback.as_dataframe()
@@ -73,6 +74,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
         fun=counter,
         callback=callback,
         stopper=BFBGSEarlyStopping(MAXEVALS),
+        bounds=(-BOUNDS, BOUNDS),
     )
     bfgs.optimize()
     logger.info(f"{idx}: done with BFGS")
@@ -103,7 +105,11 @@ def visualize_results(
 ):
     population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
-    plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
+    if len(bfgs) == 1:
+        plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
+    else:
+        plt.plot(bfgs.index, bfgs["best"], label="BFGS")
+
     for i, val in enumerate(switch_after_iterations):
         plt.plot(
             cmabfgs.index,
@@ -160,7 +166,7 @@ def main():
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, level="WARNING")
+    logger.add(sys.stderr, level="INFO")
 
     os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)

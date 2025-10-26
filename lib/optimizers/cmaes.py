@@ -7,6 +7,7 @@ from cmaes import CMA
 if TYPE_CHECKING:
     from lib.callbacks import MetricsCollector
 
+from lib.bound_handling import RepairMethod, repair_by_reflection
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
@@ -38,7 +39,9 @@ class CMAES(Optimizer):
         seed: int,
         stopper: CMAESEarlyStopping,
         callback: "MetricsCollector",
+        bounds: tuple[int, int],
         sigma: float = 1,
+        repair_method: RepairMethod = RepairMethod.REFLECT,
     ):
         self.inner = CMA(mean=mean, sigma=sigma, seed=seed, population_size=popsize)
         self.seed = seed
@@ -48,6 +51,7 @@ class CMAES(Optimizer):
             counter=fun,
         )
         self.callback = callback
+        self.bounds = bounds
 
     @property
     def raw_objective(self):
@@ -67,6 +71,7 @@ class CMAES(Optimizer):
         solutions = []
         for _ in range(self.inner.population_size):
             x = self.inner.ask()
+            repaired = repair_by_reflection(x, self.bounds)
             solutions.append((x, self.wrapped_objective(x)))
 
         self.inner.tell(solutions)

@@ -7,6 +7,8 @@ from cmaes import CMA
 from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
+from lib.bound_handling import (OutOfBoundsError, check_bounds,
+                                repair_by_reflection)
 from lib.callbacks import HasCounter
 from lib.optimizers.base import Optimizer
 from lib.optimizers.bfgs import BFGSState
@@ -71,6 +73,7 @@ class MultiCMABFGS(Optimizer):
         popsize: int,
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
+        bounds: tuple[int, int],
         sigma: int = 1,
     ):
         self.cma = CMA(
@@ -92,13 +95,15 @@ class MultiCMABFGS(Optimizer):
         self.state = MultiCMABFGSState(
             n_cmaes_iterations, "CMAES", cmaes_state, bfgs_state
         )
+        self.bounds = bounds
 
     def cma_step(self):
         solutions = []
 
         for _ in range(self.cma.population_size):
             x = self.cma.ask()
-            solutions.append((x, self.state.counter(x)))
+            repaired = repair_by_reflection(x, self.bounds)
+            solutions.append((x, self.state.counter(repaired)))
 
         self.cma.tell(solutions)
 
@@ -132,8 +137,11 @@ class MultiCMABFGS(Optimizer):
             self.callback(cast(HasCounter, self.state))
 
             def callback_wrapper(intermediate_result: OptimizeResult):
-                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
                 self.state.bfgs_state.current_result = intermediate_result
+                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
+                check_bounds(
+                    self.state.bfgs_state.current_result.x, self.bounds
+                )  # raises an exception
                 self.callback(cast(HasCounter, self.state))
 
             try:
@@ -150,5 +158,8 @@ class MultiCMABFGS(Optimizer):
                 )
             except StopOptimization as e:
                 logger.info(f"BFGS stopped early: {e}")
+
+            except OutOfBoundsError as e:
+                logger.info(f"BFGS stopped due to out-of-bounds: {e}")
 
         self.finish_cmaes()
