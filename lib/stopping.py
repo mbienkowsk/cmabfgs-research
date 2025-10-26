@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from lib.optimizers.bfgs import BFGSState
     from lib.optimizers.cmaes import CMAESState
 
 
@@ -13,6 +14,11 @@ class StopReason(Enum):
     MAXEVALS = auto()
     TOLFUN = auto()
     TOLHIST = auto()
+
+
+class HasNumEvals(Protocol):
+    @property
+    def num_evaluations(self) -> int: ...
 
 
 class StopOptimization(Exception):
@@ -24,13 +30,14 @@ class StopOptimization(Exception):
         super().__init__(f"Optimization stopped: {reason.name}")
 
 
+def check_max_evals(max_evals: int | None, state: HasNumEvals):
+    return max_evals is not None and state.num_evaluations >= max_evals
+
+
 @dataclass
 class CMAESEarlyStopping:
     max_evals: int | None = field(default=None)
     tolfun: float | None = field(default=None)
-
-    def check_max_evals(self, state: "CMAESState"):
-        return self.max_evals is not None and state.num_evaluations >= self.max_evals
 
     def check_tolfun(self, state: "CMAESState"):
         if self.tolfun is None or not state.population_evaluations:
@@ -44,7 +51,17 @@ class CMAESEarlyStopping:
     def __call__(self, state: "CMAESState"):
         return any(
             (
-                self.check_max_evals(state),
+                check_max_evals(self.max_evals, state),
                 self.check_tolfun(state),
             )
         )
+
+
+@dataclass
+class BFBGSEarlyStopping:
+    max_evals: int | None = field(default=None)
+
+    def __call__(self, state: "BFGSState"):
+        if check_max_evals(self.max_evals, state):
+            raise StopOptimization(reason=StopReason.MAXEVALS)
+        return False

@@ -16,7 +16,7 @@ from lib.metrics import BestSoFar
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.multicmabfgs import MultiCMABFGS
 from lib.serde import aggregate_dataframes
-from lib.stopping import CMAESEarlyStopping
+from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
@@ -67,7 +67,13 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar(OPTIMUM)]
     callback = MetricsCollector(metrics, "bfgs")
-    bfgs = BFGS(x, seed=seed, fun=counter, callback=callback)
+    bfgs = BFGS(
+        x,
+        seed=seed,
+        fun=counter,
+        callback=callback,
+        stopper=BFBGSEarlyStopping(MAXEVALS),
+    )
     bfgs.optimize()
     logger.info(f"{idx}: done with BFGS")
     return callback.as_dataframe()
