@@ -110,19 +110,18 @@ def visualize_results(
     else:
         plt.plot(bfgs.index, bfgs["best"], label="BFGS")
 
+    plt.plot(
+        cmabfgs.index,
+        cmabfgs[f"best_vanilla_cmaes"],
+        label=f"CMA-ES",
+    )
+
     for i, val in enumerate(switch_after_iterations):
         plt.plot(
             cmabfgs.index,
             cmabfgs[f"best_{val}"],
             label=f"{val} it/{val*population_size} eval)",
         )
-
-    plt.plot(
-        cmabfgs.index,
-        cmabfgs[f"best_vanilla_cmaes"],
-        linestyle="dashed",
-        label=f"CMA-ES",
-    )
 
     ymin, ymax = plt.ylim()
     plt.vlines(
