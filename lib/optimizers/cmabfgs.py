@@ -42,7 +42,7 @@ class CMABFGS(Optimizer):
         self.state = CMABFGSState("CMAES", cmaes_state, bfgs_state, fun)
 
         raise NotImplementedError(
-            "Add early BFGS stopping like in MultiCMABFGS before running this"
+            "Add early BFGS stopping & bounds like in MultiCMABFGS before running this"
         )
 
     def cma_step(self):

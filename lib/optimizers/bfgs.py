@@ -5,6 +5,7 @@ import numpy as np
 from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
+from lib.bound_handling import OutOfBoundsError, check_bounds
 from lib.stopping import BFBGSEarlyStopping, StopOptimization
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ class BFGS(Optimizer):
         fun: EvalCounter,
         callback: "MetricsCollector",
         stopper: BFBGSEarlyStopping,
+        bounds: tuple[int, int],
     ):
         self.x0 = x0
         self.inner = None
@@ -45,6 +47,7 @@ class BFGS(Optimizer):
         self.state = BFGSState(fun)
         self.stopper = stopper
         self.callback = callback
+        self.bounds = bounds
 
     def optimize(self):
         self.state.counter(
@@ -53,8 +56,11 @@ class BFGS(Optimizer):
         self.callback(self.state)
 
         def callback_wrapper(intermediate_result: OptimizeResult):
-            self.stopper(self.state)  # raises an exception
             self.state.current_result = intermediate_result
+            self.stopper(self.state)  # raises an exception
+            check_bounds(
+                self.state.current_result.x, self.bounds
+            )  # raises an exception
             return self.callback(self.state)
 
         try:
@@ -69,6 +75,8 @@ class BFGS(Optimizer):
             )
         except StopOptimization as e:
             logger.info(f"BFGS stopped early: {e}")
+        except OutOfBoundsError as e:
+            logger.info(f"BFGS stopped due to out-of-bounds: {e}")
 
         if not result.success:
             logger.warning(f"BFGS did not converge: {result.message}")
