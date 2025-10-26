@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
+from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
 if TYPE_CHECKING:
@@ -47,9 +48,14 @@ class BFGS(Optimizer):
             self.state.current_result = intermediate_result
             return self.callback(self.state)
 
-        minimize(
+        result = minimize(
             self.state.counter,
             self.x0,
             method="BFGS",
             callback=callback_wrapper,
         )
+
+        if not result.success:
+            logger.warning(f"BFGS did not converge: {result.message}")
+        else:
+            logger.info(f"BFGS converged successfully, message: {result.message}")
