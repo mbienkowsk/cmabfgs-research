@@ -20,14 +20,14 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
-# DIMENSIONS = int(os.environ["DIMENSIONS"])
-# NUM_RUNS = int(os.environ["N_RUNS"])
-# OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-# SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-DIMENSIONS = 10
-NUM_RUNS = 3
-OBJECTIVE_NAME = "CEC2"
-SWITCH_AFTER_ITERATIONS = [40]
+DIMENSIONS = int(os.environ["DIMENSIONS"])
+NUM_RUNS = int(os.environ["N_RUNS"])
+OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
+# DIMENSIONS = 100
+# NUM_RUNS = 3
+# OBJECTIVE_NAME = "CEC1"
+# SWITCH_AFTER_ITERATIONS = [40]
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
@@ -37,7 +37,7 @@ MAXEVALS = 4000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
 
-RESULT_DIR = Path(__file__).parent / "results"
+RESULT_DIR = Path(__file__).parent / "results" / "bound_violations"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
 colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
@@ -111,20 +111,89 @@ def visualize_results(
 ):
     population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
-    plt.plot(bfgs.index, bfgs["best"], label="BFGS")
-    for i, val in enumerate(switch_after_iterations):
-        plt.plot(
-            cmabfgs.index,
-            cmabfgs[f"best_{val}"],
-            label=f"{val} it/{val*population_size} eval)",
-        )
 
+    # --- BFGS Plotting ---
+    bfgs_out_of_bounds = bfgs["in_bounds"] < 1
+
+    # 1. Plot the main line (no markers)
+    (bfgs_line,) = plt.plot(
+        bfgs.index, bfgs["best"], label="BFGS", linestyle="-", marker="", zorder=2
+    )
+    bfgs_color = bfgs_line.get_color()
+
+    # 2. Plot the out-of-bounds points with an 'x' marker
     plt.plot(
-        cmabfgs.index,
-        cmabfgs[f"best_vanilla_cmaes"],
-        label=f"CMA-ES",
+        bfgs.index[bfgs_out_of_bounds],
+        bfgs["best"][bfgs_out_of_bounds],
+        marker="x",
+        linestyle="",
+        color=bfgs_color,
+        markersize=6,
+        zorder=3,
+        label="_nolegend_",
     )
 
+    # --- CMABFGS Variants Plotting ---
+    for i, val in enumerate(switch_after_iterations):
+        best_col = f"best_{val}"
+        in_bounds_col = f"in_bounds_{val}"
+        label = f"CMABFGS ({val} it/{val*population_size} eval)"
+
+        cmabfgs_out_of_bounds = cmabfgs[in_bounds_col] < 1
+
+        # 1. Plot the main line (no markers)
+        (cmabfgs_line,) = plt.plot(
+            cmabfgs.index,
+            cmabfgs[best_col],
+            label=label,
+            linestyle="-",
+            marker="",
+            zorder=2,
+        )
+        line_color = cmabfgs_line.get_color()
+
+        # 2. Plot the out-of-bounds points with an 'x' marker
+        plt.plot(
+            cmabfgs.index[cmabfgs_out_of_bounds],
+            cmabfgs[best_col][cmabfgs_out_of_bounds],
+            marker="x",
+            linestyle="",
+            color=line_color,
+            markersize=6,
+            zorder=3,
+            label="_nolegend_",
+        )
+
+    # --- Vanilla CMA-ES Plotting ---
+    best_col = f"best_vanilla_cmaes"
+    in_bounds_col = f"in_bounds_vanilla_cmaes"
+
+    vanilla_out_of_bounds = cmabfgs[in_bounds_col] < 1
+
+    # 1. Plot the main line (no markers)
+    (vanilla_line,) = plt.plot(
+        cmabfgs.index,
+        cmabfgs[best_col],
+        label=f"CMA-ES",
+        linestyle="-",
+        marker="",
+        zorder=2,
+    )
+    line_color = vanilla_line.get_color()
+
+    # 2. Plot the out-of-bounds points with an 'x' marker
+    plt.plot(
+        cmabfgs.index[vanilla_out_of_bounds],
+        cmabfgs[best_col][vanilla_out_of_bounds],
+        marker="x",
+        linestyle="",
+        color=line_color,
+        markersize=6,
+        zorder=3,
+        label="_nolegend_",
+    )
+
+    # --- Vlines (Original code) ---
     ymin, ymax = plt.ylim()
     plt.vlines(
         x=np.array(switch_after_iterations) * population_size,
