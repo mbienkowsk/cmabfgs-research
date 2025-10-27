@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -8,6 +9,7 @@ from loguru import logger
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmabfgs import CMABFGSState, CMAESState
 from lib.optimizers.cmaes import CMAESState
+from lib.util import check_bounds
 
 
 class Metric(ABC):
@@ -89,3 +91,19 @@ class CovarianceMatrixDifferenceNorm(Metric):
             return pd.NA
 
         return np.linalg.norm(self.current_covariance_matrix - prev)
+
+
+@dataclass
+class BoundsCheck(Metric):
+    bounds: tuple[int, int]
+
+    def key(self):
+        return "in_bounds"
+
+    def collect_cmaes(self, state: CMAESState):
+        return check_bounds(state.mean, self.bounds)
+
+    def collect_bfgs(self, state: BFGSState):
+        if not state.current_result:
+            return pd.NA
+        return check_bounds(state.current_result.x, self.bounds)

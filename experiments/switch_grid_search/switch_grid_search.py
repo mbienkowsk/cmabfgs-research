@@ -12,7 +12,7 @@ from sympy import prime
 
 from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
-from lib.metrics import BestSoFar
+from lib.metrics import BestSoFar, BoundsCheck
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.multicmabfgs import MultiCMABFGS
 from lib.serde import aggregate_dataframes
@@ -20,14 +20,14 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter
 
 BOUNDS = 100
-DIMENSIONS = int(os.environ["DIMENSIONS"])
-NUM_RUNS = int(os.environ["N_RUNS"])
-OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 10
-# NUM_RUNS = 3
-# OBJECTIVE_NAME = "CEC2"
-# SWITCH_AFTER_ITERATIONS = [40, 80, 300]
+# DIMENSIONS = int(os.environ["DIMENSIONS"])
+# NUM_RUNS = int(os.environ["N_RUNS"])
+# OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+# SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
+DIMENSIONS = 10
+NUM_RUNS = 3
+OBJECTIVE_NAME = "CEC2"
+SWITCH_AFTER_ITERATIONS = [40]
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
@@ -48,6 +48,12 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [
         BestSoFar(OPTIMUM),
+        BoundsCheck(
+            (
+                -BOUNDS,
+                BOUNDS,
+            )
+        ),
     ]
     callback = MetricsCollector(metrics, "cmabfgs")
     optimizer = MultiCMABFGS(
@@ -65,7 +71,15 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
 
 def run_bfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
-    metrics = [BestSoFar(OPTIMUM)]
+    metrics = [
+        BestSoFar(OPTIMUM),
+        BoundsCheck(
+            (
+                -BOUNDS,
+                BOUNDS,
+            )
+        ),
+    ]
     callback = MetricsCollector(metrics, "bfgs")
     bfgs = BFGS(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()

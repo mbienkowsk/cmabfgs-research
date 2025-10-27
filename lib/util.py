@@ -78,3 +78,7 @@ def extract_objective_from_path(path: Path):
     if match:
         return match.group(1)
     raise ValueError(f"Could not extract objective from path: {path}")
+
+
+def check_bounds(solution: np.ndarray, bounds: tuple[int, int]):
+    return np.all(solution >= bounds[0]) and np.all(solution <= bounds[1])
