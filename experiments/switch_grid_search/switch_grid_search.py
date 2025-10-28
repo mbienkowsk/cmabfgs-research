@@ -108,7 +108,7 @@ def visualize_results(
     if len(bfgs) == 1:
         plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
     else:
-        plt.plot(bfgs.index, bfgs["best"], label="BFGS")
+        plt.plot(bfgs.index[1:], bfgs["best"], label="BFGS")
 
     plt.plot(
         cmabfgs.index,
