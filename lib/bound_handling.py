@@ -1,6 +1,7 @@
 from enum import Enum
 
 import numpy as np
+from loguru import logger
 
 
 class RepairMethod(Enum):
@@ -15,11 +16,24 @@ def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.
     repaired = individual.copy()
 
     below = repaired < low
+    above = repaired > high
+    needs_repair = np.any(below | above)
+    if needs_repair:
+        logger.warning(
+            f"individual needs repair: {individual} out of bounds {bounds}", repaired
+        )
+    else:
+        logger.info(
+            f"individual doesn't need repair: {individual} in bounds {bounds}", repaired
+        )
+        return individual
+
+    repaired[below] = low + (low - repaired[below])
     repaired[below] = np.clip(repaired[below], low, high)
 
-    above = repaired > high
     repaired[above] = high - (repaired[above] - high)
     repaired[above] = np.clip(repaired[above], low, high)
+    logger.error(f"individual {individual} after repair: {repaired}")
 
     return repaired
 
