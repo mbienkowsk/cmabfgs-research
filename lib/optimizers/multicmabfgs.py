@@ -7,14 +7,12 @@ from cmaes import CMA
 from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
-from lib.bound_handling import (OutOfBoundsError, check_bounds,
-                                repair_by_reflection)
+from lib.bound_handling import OutOfBoundsError, check_bounds, repair_by_reflection
 from lib.callbacks import HasCounter
 from lib.optimizers.base import Optimizer
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
-from lib.stopping import (BFBGSEarlyStopping, CMAESEarlyStopping,
-                          StopOptimization)
+from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping, StopOptimization
 from lib.util import EvalCounter
 
 if TYPE_CHECKING:
@@ -76,12 +74,7 @@ class MultiCMABFGS(Optimizer):
         bounds: tuple[int, int],
         sigma: int = 1,
     ):
-        self.cma = CMA(
-            mean=x0,
-            sigma=sigma,
-            seed=seed,
-            population_size=popsize,
-        )
+        self.cma = CMA(mean=x0, sigma=sigma, seed=seed, population_size=popsize)
         self.seed = seed
         self.nums_cmaes_iterations = n_cmaes_iterations
         self.callback = callback
@@ -103,7 +96,7 @@ class MultiCMABFGS(Optimizer):
         for _ in range(self.cma.population_size):
             x = self.cma.ask()
             repaired = repair_by_reflection(x, self.bounds)
-            solutions.append((x, self.state.counter(repaired)))
+            solutions.append((repaired, self.state.counter(repaired)))
 
         self.cma.tell(solutions)
 
