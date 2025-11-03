@@ -140,7 +140,7 @@ def visualize_results(
 
 def main():
     with mp.Pool(mp.cpu_count()) as pool:
-        rv = pool.map(single_run, range(2, 3))
+        rv = pool.map(single_run, range(1, NUM_RUNS + 1))
 
     cmabfgs_agg = aggregate_dataframes([val[0] for val in rv])
     bfgs_agg = aggregate_dataframes([val[1] for val in rv])
