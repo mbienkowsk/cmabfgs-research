@@ -20,12 +20,11 @@ def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
     """aggregate dataframes with the same columns where
     num_evaluations is the index"""
     common_idx = sorted(set().union(*[df.index for df in dfs]))
-    dfs_interp = [df.reindex(common_idx).interpolate(method="index") for df in dfs]
 
-    stacked = np.stack([df.values for df in dfs_interp])
+    stacked = np.stack([df.values for df in dfs])
     mean = stacked.mean(axis=0)
     return pd.DataFrame(
         mean,
         index=common_idx,  # pyright: ignore[reportArgumentType]
-        columns=dfs_interp[0].columns,
+        columns=next(iter(dfs)).columns,
     )

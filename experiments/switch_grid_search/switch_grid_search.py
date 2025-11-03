@@ -33,7 +33,7 @@ OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
 )
-MAXEVALS = 4000 * DIMENSIONS
+MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
 
@@ -86,9 +86,7 @@ def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
     rng = np.random.default_rng(seed)
     x = cast(
         np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5)
-        * 2
-        * BOUNDS,  # pyright: ignore[reportArgumentType]
+        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
     )
     cmabfgs = run_multicmabfgs(x, seed, idx)
     bfgs = run_bfgs(x, seed, idx)
@@ -105,22 +103,18 @@ def visualize_results(
 ):
     population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
+    ax = plt.gca()
+
     if len(bfgs) == 1:
         plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
     else:
-        plt.plot(bfgs.index[1:], bfgs["best"], label="BFGS")
+        plt.plot(bfgs.index[1:], bfgs["best"][1:], label="BFGS")
 
-    plt.plot(
-        cmabfgs.index,
-        cmabfgs[f"best_vanilla_cmaes"],
-        label=f"CMA-ES",
-    )
+    cmabfgs["best_vanilla_cmaes"].dropna().plot(ax=ax)
 
     for i, val in enumerate(switch_after_iterations):
-        plt.plot(
-            cmabfgs.index,
-            cmabfgs[f"best_{val}"],
-            label=f"{val} it/{val*population_size} eval)",
+        cmabfgs[f"best_{val}"].dropna().plot(
+            ax=ax, label=f"{val} it/{val * population_size} eval)"
         )
 
     ymin, ymax = plt.ylim()
