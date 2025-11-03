@@ -52,14 +52,13 @@ def get_function_by_name(
 
     if name == "Elliptic":
         return (Elliptic.fun, 0) if with_optimum else Elliptic.fun
-
+    elif name == "Square":
+        return (lambda x: np.sum(x**2), 0) if with_optimum else lambda x: np.sum(x**2)
     elif name.startswith("CEC"):
         try:
             idx = int(name[3:])
             fn = get_cec2017_for_dim(idx, dim)
-            return (
-                (fn.evaluate, fn.f_global) if with_optimum else fn.evaluate
-            )  # pyright: ignore[reportReturnType]
+            return (fn.evaluate, fn.f_global) if with_optimum else fn.evaluate  # pyright: ignore[reportReturnType]
         except ValueError:
             raise ValueError(f"Invalid CEC function name: {name}")
         except Exception as e:

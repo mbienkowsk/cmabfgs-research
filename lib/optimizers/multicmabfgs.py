@@ -98,6 +98,7 @@ class MultiCMABFGS(Optimizer):
             repaired = repair_by_reflection(x, self.bounds)
             solutions.append((repaired, self.state.counter(repaired)))
 
+        self.update_cmaes_state([solution[1] for solution in solutions])
         self.cma.tell(solutions)
 
         return solutions.copy()
@@ -113,9 +114,14 @@ class MultiCMABFGS(Optimizer):
 
     def finish_cmaes(self):
         self.switch_to_cmaes()
-        while not self.cmaes_stopper:
+        while not self.cmaes_stopper(self.state.cmaes_state):
             self.cma_step()
             self.callback(cast(HasCounter, self.state))
+
+    def update_cmaes_state(self, population_evaluations: list[float]):
+        self.state.cmaes_state.population_evaluations = population_evaluations
+        self.state.cmaes_state.mean = self.cma.mean
+        self.state.cmaes_state.covariance_matrix = self.cma._C
 
     def optimize(self):
         shifted = [0] + self.nums_cmaes_iterations[:-1]
@@ -131,28 +137,34 @@ class MultiCMABFGS(Optimizer):
 
             def callback_wrapper(intermediate_result: OptimizeResult):
                 self.state.bfgs_state.current_result = intermediate_result
-                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
                 check_bounds(
                     self.state.bfgs_state.current_result.x, self.bounds
                 )  # raises an exception
+                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
                 self.callback(cast(HasCounter, self.state))
 
             try:
-                minimize(
+                result = minimize(
                     self.state.counter,
                     self.cma.mean,
                     method="BFGS",
                     callback=callback_wrapper,
                     options={
-                        "gtol": 1e-30,
+                        "gtol": 1e-8,
                         "hess_inv0": (self.cma._C + self.cma._C.T) / 2,
                         # TODO: why is this still happening? investigate
                     },
                 )
+                if not result.success:
+                    logger.warning(f"BFGS did not converge: {result.message}")
+                else:
+                    logger.warning(
+                        f"BFGS converged successfully, message: {result.message}"
+                    )
             except StopOptimization as e:
-                logger.info(f"BFGS stopped early: {e}")
+                logger.warning(f"BFGS stopped early: {e}")
 
             except OutOfBoundsError as e:
-                logger.info(f"BFGS stopped due to out-of-bounds: {e}")
+                logger.warning(f"BFGS stopped due to out-of-bounds: {e}")
 
         self.finish_cmaes()

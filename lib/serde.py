@@ -1,8 +1,8 @@
 import glob
+import numpy as np
 from collections.abc import Iterable
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 
@@ -17,14 +17,11 @@ def load_results_from_directory(dir_path: Path):
 
 
 def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
-    """aggregate dataframes with the same columns where
-    num_evaluations is the index"""
-    common_idx = sorted(set().union(*[df.index for df in dfs]))
-
-    stacked = np.stack([df.values for df in dfs])
-    mean = stacked.mean(axis=0)
-    return pd.DataFrame(
-        mean,
-        index=common_idx,  # pyright: ignore[reportArgumentType]
-        columns=next(iter(dfs)).columns,
+    common_index = np.unique(
+        np.concatenate([df.index.values for df in dfs])  # pyright: ignore[reportCallIssue, reportArgumentType]
     )
+    aligned = [
+        df.reindex(common_index).interpolate(method="linear", limit_area="inside")
+        for df in dfs
+    ]
+    return pd.concat(aligned).groupby(level=0).mean()

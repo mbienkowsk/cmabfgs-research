@@ -23,9 +23,6 @@ def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.
             f"individual needs repair: {individual} out of bounds {bounds}", repaired
         )
     else:
-        logger.info(
-            f"individual doesn't need repair: {individual} in bounds {bounds}", repaired
-        )
         return individual
 
     repaired[below] = low + (low - repaired[below])
