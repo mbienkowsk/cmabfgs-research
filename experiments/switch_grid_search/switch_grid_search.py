@@ -19,6 +19,8 @@ from lib.serde import aggregate_dataframes
 from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
+LOG_LEVEL = "INFO"
+
 BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
@@ -159,7 +161,7 @@ def main():
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, level="ERROR")
+    logger.add(sys.stderr, level=LOG_LEVEL)
 
     os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
