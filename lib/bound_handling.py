@@ -19,7 +19,7 @@ def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.
     above = repaired > high
     needs_repair = np.any(below | above)
     if needs_repair:
-        logger.warning(
+        logger.debug(
             f"individual needs repair: {individual} out of bounds {bounds}", repaired
         )
     else:
@@ -30,7 +30,7 @@ def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.
 
     repaired[above] = high - (repaired[above] - high)
     repaired[above] = np.clip(repaired[above], low, high)
-    logger.error(f"individual {individual} after repair: {repaired}")
+    logger.debug(f"individual {individual} after repair: {repaired}")
 
     return repaired
 
