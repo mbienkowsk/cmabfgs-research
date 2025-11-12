@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from lib.callbacks import MetricsCollector
@@ -7,8 +7,6 @@ if TYPE_CHECKING:
 
 class Optimizer(ABC):
     """Common interface for all optimizers"""
-
-    state: Any
 
     @abstractmethod
     @abstractmethod
