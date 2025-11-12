@@ -18,18 +18,13 @@ class MetricsCollector:
     collect_method: str
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
 
-    def __call__(self, state: HasCounter):
+    def __call__(self, state: HasCounter, identifier: str = ""):
         evals = state.counter.num_evaluations
 
         entry = {"num_evaluations": [evals]}
         for metric in self.metrics:
-            collect_fn = getattr(metric, f"collect_{self.collect_method}")
-            key = (
-                metric.key() + "_" + suffix
-                if (suffix := getattr(state, "key_suffix", ""))
-                else metric.key()
-            )
-            entry[key] = [collect_fn(state)]
+            key = f"{metric.key()}_{identifier}" if identifier else metric.key()
+            entry[key] = metric.collect(state)  # pyright: ignore[reportArgumentType]
 
         entry_df = pd.DataFrame(entry).set_index("num_evaluations")
         if self.data.empty:

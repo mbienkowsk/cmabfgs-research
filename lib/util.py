@@ -1,9 +1,13 @@
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
+from loguru import logger
+
+from lib.bound_handling import check_bounds
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -34,9 +38,18 @@ class EvalCounter:
     fun: Callable
     num_evaluations: int = field(default=0)
     best_solutions: list[float] = field(default_factory=list)
+    bounds: tuple[int, int] | None = None
+    identifier: str = ""
 
     def __call__(self, x):
         self.num_evaluations += 1
+
+        if self.bounds and not check_bounds(x, self.bounds, False):
+            msg = "Out of bounds evaluation detected."
+            if self.identifier:
+                msg = f"{self.identifier}: {msg}"
+            logger.warning(msg)
+
         y = self.fun(x)
 
         if not self.best_solutions or y < self.best_solutions[-1]:
@@ -45,6 +58,11 @@ class EvalCounter:
             self.best_solutions.append(self.best_solutions[-1])
 
         return y
+
+    def copy_with_identifier(self, identifier: str):
+        rv = deepcopy(self)
+        rv.identifier = identifier
+        return rv
 
 
 def one_dimensional(fun: Callable, x, d):

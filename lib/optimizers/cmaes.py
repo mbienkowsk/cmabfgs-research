@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 
@@ -42,6 +43,7 @@ class CMAES(Optimizer):
         bounds: tuple[int, int],
         sigma: float = 1,
         repair_method: RepairMethod = RepairMethod.REFLECT,
+        identifier: str = "",
     ):
         self.inner = CMA(mean=mean, sigma=sigma, seed=seed, population_size=popsize)
         self.seed = seed
@@ -52,6 +54,7 @@ class CMAES(Optimizer):
         )
         self.callback = callback
         self.bounds = bounds
+        self.identifier = identifier
 
     @property
     def raw_objective(self):
@@ -67,7 +70,17 @@ class CMAES(Optimizer):
         self.state.mean = self.mean
         self.state.covariance_matrix = self.inner._C
 
-    def step(self):
+    @property
+    def C(self):
+        return self.inner._C
+
+    @property
+    def evals_remaining(self):
+        if not self.stopper.max_evals:
+            return int("inf")
+        return self.stopper.max_evals - self.state.num_evaluations
+
+    def _step(self):
         solutions = []
         for _ in range(self.inner.population_size):
             x = self.inner.ask()
@@ -77,13 +90,17 @@ class CMAES(Optimizer):
         self.inner.tell(solutions)
         self.update_state([sol[1] for sol in solutions])
 
+        return deepcopy(solutions)
+
+    def step(self):
+        solutions = self._step()
+        self.callback(self.state, self.identifier)
         return solutions
 
     @override
     def optimize(self):
         while not self.stopper(self.state):
-            solutions = self.step()
-            self.callback(self.state)
+            _ = self.step()
 
     @property
     def mean(self):
