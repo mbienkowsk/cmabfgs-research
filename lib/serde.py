@@ -20,8 +20,5 @@ def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
     common_index = np.unique(
         np.concatenate([df.index.values for df in dfs])  # pyright: ignore[reportCallIssue, reportArgumentType]
     )
-    aligned = [
-        df.reindex(common_index).interpolate(method="linear", limit_area="inside")
-        for df in dfs
-    ]
+    aligned = [df.reindex(common_index).interpolate(method="linear") for df in dfs]
     return pd.concat(aligned).groupby(level=0).mean()
