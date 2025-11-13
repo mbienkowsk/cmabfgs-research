@@ -32,6 +32,10 @@ class MetricsCollector:
         else:
             self.data = pd.concat([self.data, entry_df])
 
+    def validate(self):
+        if not (self.data >= 0).all().all():
+            raise ValueError("MetricsCollector contains negative values.")
+
     def as_dataframe(self):
         # squash entries with duplicate indices
         return cast(pd.DataFrame, self.data.groupby(self.data.index).max())
