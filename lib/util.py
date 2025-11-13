@@ -1,10 +1,12 @@
 import re
+from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 from lib.bound_handling import check_bounds
@@ -89,3 +91,15 @@ def extract_objective_from_path(path: Path):
     if match:
         return match.group(1)
     raise ValueError(f"Could not extract objective from path: {path}")
+
+
+def assert_non_increasing(data_storage: pd.Series | pd.DataFrame, msg: str):
+    assert (data_storage.diff().iloc[1:] <= 0).all(), (
+        msg or "Series is not non-increasing"
+    )
+
+
+def assert_all_non_increasing(
+    data_containers: Iterable[pd.Series | pd.DataFrame], msg: str
+):
+    (assert_non_increasing(c, msg) for c in data_containers)
