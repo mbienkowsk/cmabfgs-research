@@ -14,7 +14,7 @@ from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.optimizers.bfgs import BFGS
-from lib.optimizers.multi2 import MultiCMABFGS2
+from lib.optimizers.multicmabfgs import MultiCMABFGS
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
@@ -52,7 +52,7 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
         BestSoFar(OPTIMUM),
     ]
     callback = MetricsCollector(metrics, "cmabfgs")
-    optimizer = MultiCMABFGS2(
+    optimizer = MultiCMABFGS(
         x,
         SWITCH_AFTER_ITERATIONS,
         seed,

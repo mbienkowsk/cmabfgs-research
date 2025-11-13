@@ -12,7 +12,7 @@ from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
 
 
-class MultiCMABFGS2(Optimizer):
+class MultiCMABFGS(Optimizer):
     def __init__(
         self,
         x0: np.ndarray,
