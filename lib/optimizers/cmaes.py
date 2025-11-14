@@ -85,7 +85,7 @@ class CMAES(Optimizer):
         for _ in range(self.inner.population_size):
             x = self.inner.ask()
             repaired = repair_by_reflection(x, self.bounds)
-            solutions.append((repaired, self.wrapped_objective(x)))
+            solutions.append((repaired, self.wrapped_objective(repaired)))
 
         self.inner.tell(solutions)
         self.update_state([sol[1] for sol in solutions])
