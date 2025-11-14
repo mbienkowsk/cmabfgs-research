@@ -40,6 +40,7 @@ POPULATION_SIZE = 4 * DIMENSIONS
 
 
 RESULT_DIR = Path(__file__).parent / "results"
+CSV_DIR = RESULT_DIR / "data"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
 colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
