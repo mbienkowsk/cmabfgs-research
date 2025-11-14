@@ -38,6 +38,7 @@ POPULATION_SIZE = 4 * DIMENSIONS
 
 
 RESULT_DIR = Path(__file__).parent / "results"
+DATA_DIR = RESULT_DIR / "data"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
 colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
@@ -151,7 +152,7 @@ def main():
     combined = bfgs_prefixed.join(cmabfgs_agg, how="outer")
     # Save to CSV
     combined.to_csv(
-        RESULT_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
+        DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
         index_label="num_evaluations",
     )
     visualize_results(bfgs_agg, cmabfgs_agg)
@@ -163,5 +164,6 @@ if __name__ == "__main__":
 
     os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     main()
