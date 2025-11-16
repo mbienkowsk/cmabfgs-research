@@ -26,11 +26,11 @@ DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 100
-# NUM_RUNS = 5
-# OBJECTIVE_NAME = "CEC21"
-# SWITCH_AFTER_ITERATIONS = [750]
-#
+# DIMENSIONS = 10
+# NUM_RUNS = 1
+# OBJECTIVE_NAME = "CEC25"
+# SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
+
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
@@ -85,15 +85,19 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 
 
 def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
-    seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
-    rng = np.random.default_rng(seed)
-    x = cast(
-        np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
-    )
-    cmabfgs = run_multicmabfgs(x, seed, idx)
-    bfgs = run_bfgs(x, seed, idx)
-    return cmabfgs, bfgs
+    try:
+        seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
+        rng = np.random.default_rng(seed)
+        x = cast(
+            np.ndarray,  # pyright: ignore[reportArgumentType]
+            (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
+        )
+        cmabfgs = run_multicmabfgs(x, seed, idx)
+        bfgs = run_bfgs(x, seed, idx)
+        return cmabfgs, bfgs
+    except Exception as e:
+        logger.error(f"Error in run {idx}: {e}")
+        raise e
 
 
 def visualize_results(
