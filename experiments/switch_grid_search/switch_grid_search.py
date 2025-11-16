@@ -83,15 +83,19 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 
 
 def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
-    seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
-    rng = np.random.default_rng(seed)
-    x = cast(
-        np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
-    )
-    cmabfgs = run_multicmabfgs(x, seed, idx)
-    bfgs = run_bfgs(x, seed, idx)
-    return cmabfgs, bfgs
+    try:
+        seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
+        rng = np.random.default_rng(seed)
+        x = cast(
+            np.ndarray,  # pyright: ignore[reportArgumentType]
+            (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
+        )
+        cmabfgs = run_multicmabfgs(x, seed, idx)
+        bfgs = run_bfgs(x, seed, idx)
+        return cmabfgs, bfgs
+    except Exception as e:
+        logger.error(f"Error in run {idx}: {e}")
+        raise e
 
 
 def visualize_results(
