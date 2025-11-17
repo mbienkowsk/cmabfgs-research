@@ -26,11 +26,11 @@ DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 100
-# NUM_RUNS = 5
-# OBJECTIVE_NAME = "CEC21"
-# SWITCH_AFTER_ITERATIONS = [750]
-#
+# DIMENSIONS = 10
+# NUM_RUNS = 1
+# OBJECTIVE_NAME = "CEC25"
+# SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
+
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
