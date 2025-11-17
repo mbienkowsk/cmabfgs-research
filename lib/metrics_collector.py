@@ -16,6 +16,7 @@ class HasCounter(Protocol):
 class MetricsCollector:
     metrics: Sequence[Metric]
     collect_method: str
+    run_id: int
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
 
     def __call__(self, state: HasCounter, identifier: str = ""):
@@ -38,7 +39,9 @@ class MetricsCollector:
 
     def as_dataframe(self):
         # squash entries with duplicate indices
-        return cast(pd.DataFrame, self.data.groupby(self.data.index).max())
+        df = cast(pd.DataFrame, self.data.groupby(self.data.index).max())
+        df["run_id"] = self.run_id
+        return df
 
     def export_to_csv(self, path: Path):
         self.as_dataframe().to_csv(path)

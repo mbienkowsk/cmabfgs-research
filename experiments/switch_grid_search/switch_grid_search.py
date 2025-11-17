@@ -52,7 +52,7 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
     metrics = [
         BestSoFar(OPTIMUM),
     ]
-    callback = MetricsCollector(metrics, "cmabfgs")
+    callback = MetricsCollector(metrics, "cmabfgs", idx)
     optimizer = MultiCMABFGS(
         x,
         SWITCH_AFTER_ITERATIONS,
@@ -70,7 +70,7 @@ def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
 def run_bfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar(OPTIMUM)]
-    callback = MetricsCollector(metrics, "bfgs")
+    callback = MetricsCollector(metrics, "bfgs", idx)
     bfgs = BFGS(
         x,
         seed=seed,
@@ -160,7 +160,7 @@ def main():
         DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
         index_label="num_evaluations",
     )
-    visualize_results(bfgs_agg, cmabfgs_agg)
+    visualize_results(bfgs_agg, cmabfgs_agg)  # pyright: ignore[reportArgumentType]
 
 
 if __name__ == "__main__":
