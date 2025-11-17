@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.cmaes import CMAES
-from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
+from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 
 if TYPE_CHECKING:
     from lib.metrics_collector import MetricsCollector
@@ -57,7 +57,7 @@ class MultiCMABFGS(Optimizer):
                     f"bfgs_{identifier}"
                 ),  # bfgs gets its own eval counter
                 self.callback,
-                BFBGSEarlyStopping(self.cmaes.evals_remaining),
+                BFGSEarlyStopping(self.cmaes.evals_remaining),
                 self.bounds,
                 identifier=identifier,
                 hess_inv0=(self.cmaes.C + self.cmaes.C.T) / 2,

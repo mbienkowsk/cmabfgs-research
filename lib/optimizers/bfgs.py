@@ -6,7 +6,7 @@ from loguru import logger
 from scipy.optimize import OptimizeResult, minimize
 
 from lib.bound_handling import OutOfBoundsError, check_bounds
-from lib.stopping import BFBGSEarlyStopping, StopOptimization
+from lib.stopping import BFGSEarlyStopping, StopOptimization
 
 if TYPE_CHECKING:
     from lib.metrics_collector import MetricsCollector
@@ -39,7 +39,7 @@ class BFGS(Optimizer):
         x0: np.ndarray,
         fun: EvalCounter,
         callback: "MetricsCollector",
-        stopper: BFBGSEarlyStopping,
+        stopper: BFGSEarlyStopping,
         bounds: tuple[int, int],
         identifier: str = "",
         hess_inv0: np.ndarray | None = None,

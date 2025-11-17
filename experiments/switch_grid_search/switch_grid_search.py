@@ -16,7 +16,7 @@ from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.multicmabfgs import MultiCMABFGS
 from lib.serde import aggregate_dataframes
-from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
+from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
@@ -75,7 +75,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
         x,
         fun=counter,
         callback=callback,
-        stopper=BFBGSEarlyStopping(MAXEVALS),
+        stopper=BFGSEarlyStopping(MAXEVALS),
         bounds=(-BOUNDS, BOUNDS),
         identifier="bfgs",
     )

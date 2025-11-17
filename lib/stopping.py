@@ -43,8 +43,9 @@ class CMAESEarlyStopping:
         if self.tolfun is None or not state.population_evaluations:
             return False
 
-        best, worst = np.min(state.population_evaluations), np.max(
-            state.population_evaluations
+        best, worst = (
+            np.min(state.population_evaluations),
+            np.max(state.population_evaluations),
         )
         return np.abs(best - worst) < self.tolfun
 
@@ -58,7 +59,7 @@ class CMAESEarlyStopping:
 
 
 @dataclass
-class BFBGSEarlyStopping:
+class BFGSEarlyStopping:
     max_evals: int | None = field(default=None)
 
     def __call__(self, state: "BFGSState"):
