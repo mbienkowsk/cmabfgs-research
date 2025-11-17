@@ -21,14 +21,15 @@ from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
-DEBUG = True
+DEBUG = False
 
 BOUNDS = 100
 
 if DEBUG:
     DIMENSIONS = 10
-    NUM_RUNS = 1
-    OBJECTIVE_NAME = "CEC25"
+    NUM_RUNS = 10
+    EXACT_RUN = 6
+    OBJECTIVE_NAME = "CEC3"
     SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
@@ -147,7 +148,12 @@ def visualize_results(
 
 def main():
     with mp.Pool(mp.cpu_count()) as pool:
-        rv = pool.map(single_run, range(1, NUM_RUNS + 1))
+        run_indices = (
+            range(1, NUM_RUNS + 1)
+            if not DEBUG or EXACT_RUN is None
+            else range(EXACT_RUN, EXACT_RUN + 1)
+        )
+        rv = pool.map(single_run, run_indices)
 
     concatenated = pd.concat(rv)
     concatenated["run_id"] = concatenated["run_id"].astype("Int64")

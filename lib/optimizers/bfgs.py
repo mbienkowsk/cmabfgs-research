@@ -90,3 +90,8 @@ class BFGS(Optimizer):
             logger.info(f"BFGS {self.identifier} stopped early: {e}")
         except OutOfBoundsError as e:
             logger.info(f"BFGS {self.identifier} stopped due to out-of-bounds: {e}")
+            if len(self.callback.data) == 0:
+                # bfgs was stopped immediately, crap starting point and instant oob
+                # add a single point to prevent empty dataframe
+                self.state.counter(self.x0)
+                self.callback(self.state, self.identifier)
