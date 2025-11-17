@@ -20,16 +20,20 @@ from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
+DEBUG = True
 
 BOUNDS = 100
-DIMENSIONS = int(os.environ["DIMENSIONS"])
-NUM_RUNS = int(os.environ["N_RUNS"])
-OBJECTIVE_NAME = os.environ["OBJECTIVE"]
-SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 10
-# NUM_RUNS = 1
-# OBJECTIVE_NAME = "CEC25"
-# SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
+
+if DEBUG:
+    DIMENSIONS = 10
+    NUM_RUNS = 1
+    OBJECTIVE_NAME = "CEC25"
+    SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
+else:
+    DIMENSIONS = int(os.environ["DIMENSIONS"])
+    NUM_RUNS = int(os.environ["N_RUNS"])
+    OBJECTIVE_NAME = os.environ["OBJECTIVE"]
+    SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
 
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
