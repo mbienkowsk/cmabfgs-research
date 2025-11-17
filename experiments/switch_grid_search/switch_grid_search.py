@@ -73,7 +73,6 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
     callback = MetricsCollector(metrics, "bfgs", idx)
     bfgs = BFGS(
         x,
-        seed=seed,
         fun=counter,
         callback=callback,
         stopper=BFBGSEarlyStopping(MAXEVALS),

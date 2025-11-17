@@ -53,7 +53,6 @@ class MultiCMABFGS(Optimizer):
             identifier = str(self.nums_cmaes_iterations[idx])
             bfgs = BFGS(
                 self.cmaes.mean,
-                self.seed,
                 self.fun.copy_with_identifier(
                     f"bfgs_{identifier}"
                 ),  # bfgs gets its own eval counter

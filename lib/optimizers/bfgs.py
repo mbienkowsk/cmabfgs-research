@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -20,7 +20,7 @@ BFGS_GTOL = 1e-8
 @dataclass
 class BFGSState:
     counter: EvalCounter
-    current_result: OptimizeResult | None = field(default=None)
+    current_result: OptimizeResult | None = None
 
     @property
     def num_evaluations(self):
@@ -37,7 +37,6 @@ class BFGS(Optimizer):
     def __init__(
         self,
         x0: np.ndarray,
-        seed: int,
         fun: EvalCounter,
         callback: "MetricsCollector",
         stopper: BFBGSEarlyStopping,
@@ -47,7 +46,6 @@ class BFGS(Optimizer):
     ):
         self.x0 = x0
         self.inner = None
-        self.seed = seed
         self.state = BFGSState(fun)
         self.stopper = stopper
         self.callback = callback
