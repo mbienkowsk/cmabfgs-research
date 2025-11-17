@@ -48,7 +48,7 @@ plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
 def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(OBJECTIVE)
+    counter = EvalCounter(OBJECTIVE, bounds=(-BOUNDS, BOUNDS))
     metrics = [
         BestSoFar(OPTIMUM),
     ]

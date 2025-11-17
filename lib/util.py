@@ -46,18 +46,23 @@ class EvalCounter:
     def __call__(self, x):
         self.num_evaluations += 1
 
+        y = self.fun(x)
+        best_so_far = self.best_solutions[-1] if self.best_solutions else np.inf
+
         if self.bounds and not check_bounds(x, self.bounds, False):
-            msg = "Out of bounds evaluation detected."
+            msg = (
+                "Out of bounds evaluation detected. Refusing to update best_solutions."
+            )
             if self.identifier:
                 msg = f"{self.identifier}: {msg}"
             logger.warning(msg)
+            self.best_solutions.append(best_so_far)
+            return y
 
-        y = self.fun(x)
-
-        if not self.best_solutions or y < self.best_solutions[-1]:
+        if not self.best_solutions or y < best_so_far:
             self.best_solutions.append(y)
         else:
-            self.best_solutions.append(self.best_solutions[-1])
+            self.best_solutions.append(best_so_far)
 
         return y
 
