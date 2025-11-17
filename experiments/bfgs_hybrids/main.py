@@ -16,14 +16,13 @@ import seaborn as sns
 from loguru import logger
 from sympy import prime
 
-from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
+from lib.metrics_collector import MetricsCollector
 from lib.optimizers import BFGS, CMAES, LBFGS
 from lib.optimizers.cmabfgs import CMABFGS
 from lib.stopping import CMAESEarlyStopping
-from lib.util import (EvalCounter, extract_dim_from_path,
-                      extract_objective_from_path)
+from lib.util import EvalCounter, extract_dim_from_path, extract_objective_from_path
 
 BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
@@ -146,7 +145,6 @@ def run_cmabfgs(x: np.ndarray, seed: int, idx: int):
 
 
 def visualize_results(result_path: Path):
-
     fig = plt.figure()
     postscripts = ["vanilla", "bfgs", "lbfgs", "cmabfgs"]
 
@@ -173,7 +171,7 @@ def visualize_results(result_path: Path):
     plt.ylabel("Najlepsze znalezione rozwiązanie")
     plt.yscale("log")
     plt.xscale("log")
-    plt.savefig(result_path / f"plot.png")
+    plt.savefig(result_path / "plot.png")
 
 
 def extract_k_from_path(path: Path):
@@ -189,9 +187,7 @@ def single_run(idx: int):
     rng = np.random.default_rng(seed)
     x = cast(
         np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5)
-        * 2
-        * BOUNDS,  # pyright: ignore[reportArgumentType]
+        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
     )
 
     run_vanilla(x, seed, idx)
@@ -206,7 +202,6 @@ def main():
 
 
 if __name__ == "__main__":
-
     logger.remove()
     logger.add(sys.stderr, level="ERROR")
 

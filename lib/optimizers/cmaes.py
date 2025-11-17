@@ -6,7 +6,7 @@ import numpy as np
 from cmaes import CMA
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 
 from lib.bound_handling import RepairMethod, repair_by_reflection
 from lib.stopping import CMAESEarlyStopping

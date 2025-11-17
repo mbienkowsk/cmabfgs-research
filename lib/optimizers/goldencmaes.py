@@ -5,7 +5,7 @@ from cmaes import CMA
 from scipy.optimize import golden
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 
 from lib.optimizers.base import Optimizer
 from lib.stopping import CMAESEarlyStopping
@@ -14,7 +14,6 @@ from lib.util import EvalCounter, gradient_central, one_dimensional
 
 # TODO: pass bfgs callback as well
 class GoldenCMAES(Optimizer):
-
     def __init__(
         self,
         x0: np.ndarray,

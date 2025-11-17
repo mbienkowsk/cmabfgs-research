@@ -11,7 +11,7 @@ from lib.optimizers.cmaes import CMAESState
 from lib.util import EvalCounter
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 
 
 @dataclass

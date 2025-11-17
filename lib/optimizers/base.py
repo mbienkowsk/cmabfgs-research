@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 
 
 class Optimizer(ABC):

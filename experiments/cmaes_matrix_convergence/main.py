@@ -10,15 +10,17 @@ import numpy as np
 from loguru import logger
 from sympy import prime
 
-from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
-from lib.metrics import (BestSoFar, CovarianceMatrixConditionNumber,
-                         CovarianceMatrixDifferenceNorm)
+from lib.metrics import (
+    BestSoFar,
+    CovarianceMatrixConditionNumber,
+    CovarianceMatrixDifferenceNorm,
+)
+from lib.metrics_collector import MetricsCollector
 from lib.optimizers.cmaes import CMAES
 from lib.serde import load_results_from_directory
 from lib.stopping import CMAESEarlyStopping
-from lib.util import (EvalCounter, extract_dim_from_path,
-                      extract_objective_from_path)
+from lib.util import EvalCounter, extract_dim_from_path, extract_objective_from_path
 
 RESULT_DIR = Path(__file__).parent / "results"
 
@@ -143,9 +145,7 @@ def single_run(idx: int):
     rng = np.random.default_rng(seed)
     x = cast(
         np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5)
-        * 2
-        * BOUNDS,  # pyright: ignore[reportArgumentType]
+        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
     )
     run_vanilla(x, seed, idx)
 

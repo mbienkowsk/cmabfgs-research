@@ -5,7 +5,7 @@ from lib.optimizers.cmaes import CMAES
 from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 import numpy as np
 
 from lib.optimizers.base import Optimizer

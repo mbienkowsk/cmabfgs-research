@@ -10,9 +10,9 @@ from loguru import logger
 from pandas import DataFrame
 from sympy import prime
 
-from lib.callbacks import MetricsCollector
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
+from lib.metrics_collector import MetricsCollector
 from lib.optimizers.cmabfgs import CMABFGS
 from lib.optimizers.cmaes import CMAES
 from lib.serde import aggregate_dataframes
@@ -81,9 +81,7 @@ def single_run(idx: int) -> tuple[DataFrame, list[DataFrame]]:
     rng = np.random.default_rng(seed)
     x = cast(
         np.ndarray,  # pyright: ignore[reportArgumentType]
-        (rng.random(DIMENSIONS) - 0.5)
-        * 2
-        * BOUNDS,  # pyright: ignore[reportArgumentType]
+        (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
     )
     vanilla = run_vanilla(x, seed, idx)
     cmabfgs = [
@@ -99,7 +97,7 @@ def visualize_results(vanilla: DataFrame, cmabfgs: list[DataFrame], save_to: Pat
         plt.plot(
             cmabfgs[i].index,
             cmabfgs[i]["best"],
-            label=f"CMABFGS (switch po {val} ewaluacjach/{val//POPULATION_SIZE} iteracjach)",
+            label=f"CMABFGS (switch po {val} ewaluacjach/{val // POPULATION_SIZE} iteracjach)",
         )
     ymin, ymax = plt.ylim()
     plt.vlines(

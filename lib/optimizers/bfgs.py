@@ -9,7 +9,7 @@ from lib.bound_handling import OutOfBoundsError, check_bounds
 from lib.stopping import BFBGSEarlyStopping, StopOptimization
 
 if TYPE_CHECKING:
-    from lib.callbacks import MetricsCollector
+    from lib.metrics_collector import MetricsCollector
 
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
