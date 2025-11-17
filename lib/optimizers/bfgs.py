@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
 
+BFGS_GTOL = 1e-8
+
 
 @dataclass
 class BFGSState:
@@ -40,6 +42,8 @@ class BFGS(Optimizer):
         callback: "MetricsCollector",
         stopper: BFBGSEarlyStopping,
         bounds: tuple[int, int],
+        identifier: str = "",
+        hess_inv0: np.ndarray | None = None,
     ):
         self.x0 = x0
         self.inner = None
@@ -48,15 +52,17 @@ class BFGS(Optimizer):
         self.stopper = stopper
         self.callback = callback
         self.bounds = bounds
+        self.identifier = identifier
+        self.hess_inv0 = hess_inv0
 
     def optimize(self):
         def callback_wrapper(intermediate_result: OptimizeResult):
             self.state.current_result = intermediate_result
-            self.stopper(self.state)  # raises an exception
             check_bounds(
                 self.state.current_result.x, self.bounds
             )  # raises an exception
-            return self.callback(self.state)
+            self.stopper(self.state)  # raises an exception
+            return self.callback(self.state, self.identifier)
 
         try:
             result = minimize(
@@ -65,19 +71,24 @@ class BFGS(Optimizer):
                 method="BFGS",
                 callback=callback_wrapper,
                 options={
-                    "gtol": 1e-30,
+                    "gtol": BFGS_GTOL,
+                    "hess_inv0": self.hess_inv0,
                 },
             )
 
             self.state.counter(
                 self.x0
             )  # ensures there is a single evaluation even if bfgs quits instantly
-            self.callback(self.state)
+            self.callback(self.state, self.identifier)
             if not result.success:
-                logger.warning(f"BFGS did not converge: {result.message}")
+                logger.warning(
+                    f"BFGS {self.identifier} did not converge: {result.message}"
+                )
             else:
-                logger.info(f"BFGS converged successfully, message: {result.message}")
+                logger.info(
+                    f"BFGS {self.identifier} converged successfully, message: {result.message}"
+                )
         except StopOptimization as e:
-            logger.info(f"BFGS stopped early: {e}")
+            logger.info(f"BFGS {self.identifier} stopped early: {e}")
         except OutOfBoundsError as e:
-            logger.info(f"BFGS stopped due to out-of-bounds: {e}")
+            logger.info(f"BFGS {self.identifier} stopped due to out-of-bounds: {e}")

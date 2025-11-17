@@ -1,170 +1,70 @@
-from copy import deepcopy
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING
 
-import numpy as np
-from cmaes import CMA
-from loguru import logger
-from scipy.optimize import OptimizeResult, minimize
-
-from lib.bound_handling import OutOfBoundsError, check_bounds, repair_by_reflection
-from lib.callbacks import HasCounter
-from lib.optimizers.base import Optimizer
-from lib.optimizers.bfgs import BFGSState
-from lib.optimizers.cmaes import CMAESState
-from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping, StopOptimization
-from lib.util import EvalCounter
+from lib.optimizers.bfgs import BFGS
+from lib.optimizers.cmaes import CMAES
+from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 
 if TYPE_CHECKING:
     from lib.callbacks import MetricsCollector
+import numpy as np
 
-
-VANILLA = "vanilla_cmaes"
-
-
-@dataclass
-class MultiCMABFGSState:
-    nums_cmaes_evaluations: list[int]
-    mode: Literal["CMAES", "BFGS"]
-    cmaes_state: CMAESState
-    bfgs_state: BFGSState
-    key_suffix: str = field(default=VANILLA)
-
-    @property
-    def num_cmaes_evaluations(self) -> int:
-        return self.cmaes_state.num_evaluations
-
-    @property
-    def counter(self) -> EvalCounter:
-        match self.mode:
-            case "CMAES":
-                return self.cmaes_state.counter
-            case "BFGS":
-                return self.bfgs_state.counter
-
-    @property
-    def bfgs_counter(self):
-        return self.bfgs_state.counter
-
-    @bfgs_counter.setter
-    def bfgs_counter(self, value):
-        self.bfgs_state.counter = value
-
-    @property
-    def cmaes_counter(self):
-        return self.cmaes_state.counter
-
-    @cmaes_counter.setter
-    def cmaes_counter(self, value):
-        self.cmaes_state.counter = value
+from lib.optimizers.base import Optimizer
+from lib.util import EvalCounter
 
 
 class MultiCMABFGS(Optimizer):
-    state: MultiCMABFGSState
-
     def __init__(
         self,
         x0: np.ndarray,
-        n_cmaes_iterations: list[int],
+        nums_cmaes_iterations: list[int],
         seed: int,
         fun: EvalCounter,
         popsize: int,
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
-        bounds: tuple[int, int],
+        bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
     ):
-        self.cma = CMA(mean=x0, sigma=sigma, seed=seed, population_size=popsize)
-        self.seed = seed
-        self.nums_cmaes_iterations = n_cmaes_iterations
+        self.nums_cmaes_iterations = nums_cmaes_iterations
         self.callback = callback
-        self.cmaes_stopper = cmaes_stopper
-        cmaes_state = CMAESState(
+        self.cmaes = CMAES(
             fun,
-            self.cma._C,
+            x0,
+            popsize,
+            seed,
+            cmaes_stopper,
+            callback,
+            bounds,
+            sigma,
+            identifier="vanilla_cmaes",
         )
-        self.bfgs_stopper = BFBGSEarlyStopping(max_evals=self.cmaes_stopper.max_evals)
-        bfgs_state = BFGSState(fun)
-        self.state = MultiCMABFGSState(
-            n_cmaes_iterations, "CMAES", cmaes_state, bfgs_state
-        )
+        self.seed = seed
+        self.fun = fun
+        self.callback = callback
         self.bounds = bounds
-
-    def cma_step(self):
-        solutions = []
-
-        for _ in range(self.cma.population_size):
-            x = self.cma.ask()
-            repaired = repair_by_reflection(x, self.bounds)
-            solutions.append((repaired, self.state.counter(repaired)))
-
-        self.update_cmaes_state([solution[1] for solution in solutions])
-        self.cma.tell(solutions)
-
-        return solutions.copy()
-
-    def switch_to_cmaes(self):
-        self.state.key_suffix = VANILLA
-        self.state.mode = "CMAES"
-
-    def switch_to_bfgs(self, suffix: str):
-        self.state.mode = "BFGS"
-        self.state.key_suffix = suffix
-        self.state.bfgs_counter = deepcopy(self.state.cmaes_counter)
-
-    def finish_cmaes(self):
-        self.switch_to_cmaes()
-        while not self.cmaes_stopper(self.state.cmaes_state):
-            self.cma_step()
-            self.callback(cast(HasCounter, self.state))
-
-    def update_cmaes_state(self, population_evaluations: list[float]):
-        self.state.cmaes_state.population_evaluations = population_evaluations
-        self.state.cmaes_state.mean = self.cma.mean
-        self.state.cmaes_state.covariance_matrix = self.cma._C
 
     def optimize(self):
         shifted = [0] + self.nums_cmaes_iterations[:-1]
         differences = [x - y for x, y in zip(self.nums_cmaes_iterations, shifted)]
         for idx, switch_after in enumerate(differences):
-            self.switch_to_cmaes()
             for _ in range(switch_after):
-                self.cma_step()
-                self.callback(cast(HasCounter, self.state))
+                self.cmaes.step()
 
-            self.switch_to_bfgs(str(self.nums_cmaes_iterations[idx]))
-            self.callback(cast(HasCounter, self.state))
+            identifier = str(self.nums_cmaes_iterations[idx])
+            bfgs = BFGS(
+                self.cmaes.mean,
+                self.seed,
+                self.fun.copy_with_identifier(
+                    f"bfgs_{identifier}"
+                ),  # bfgs gets its own eval counter
+                self.callback,
+                BFBGSEarlyStopping(self.cmaes.evals_remaining),
+                self.bounds,
+                identifier=identifier,
+                hess_inv0=(self.cmaes.C + self.cmaes.C.T) / 2,
+            )
+            self.callback(bfgs.state, identifier)
+            # TODO: might wanna artifically add a point here
+            bfgs.optimize()
 
-            def callback_wrapper(intermediate_result: OptimizeResult):
-                self.state.bfgs_state.current_result = intermediate_result
-                check_bounds(
-                    self.state.bfgs_state.current_result.x, self.bounds
-                )  # raises an exception
-                self.bfgs_stopper(self.state.bfgs_state)  # raises an exception
-                self.callback(cast(HasCounter, self.state))
-
-            try:
-                result = minimize(
-                    self.state.counter,
-                    self.cma.mean,
-                    method="BFGS",
-                    callback=callback_wrapper,
-                    options={
-                        "gtol": 1e-8,
-                        "hess_inv0": (self.cma._C + self.cma._C.T) / 2,
-                        # TODO: why is this still happening? investigate
-                    },
-                )
-                if not result.success:
-                    logger.warning(f"BFGS did not converge: {result.message}")
-                else:
-                    logger.warning(
-                        f"BFGS converged successfully, message: {result.message}"
-                    )
-            except StopOptimization as e:
-                logger.warning(f"BFGS stopped early: {e}")
-
-            except OutOfBoundsError as e:
-                logger.warning(f"BFGS stopped due to out-of-bounds: {e}")
-
-        self.finish_cmaes()
+        self.cmaes.optimize()

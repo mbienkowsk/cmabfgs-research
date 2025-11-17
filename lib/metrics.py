@@ -26,6 +26,12 @@ class Metric(ABC):
         elif state.mode == "BFGS":
             return self.collect_bfgs(state.bfgs_state)
 
+    def collect(self, state: CMAESState | BFGSState) -> Any:
+        if isinstance(state, CMAESState):
+            return self.collect_cmaes(state)
+        elif isinstance(state, BFGSState):
+            return self.collect_bfgs(state)
+
 
 class MeanEvaluation(Metric):
     def key(self):

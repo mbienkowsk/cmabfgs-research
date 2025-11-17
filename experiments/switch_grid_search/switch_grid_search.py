@@ -19,16 +19,18 @@ from lib.serde import aggregate_dataframes
 from lib.stopping import BFBGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
+LOG_LEVEL = "ERROR"
+
 BOUNDS = 100
 DIMENSIONS = int(os.environ["DIMENSIONS"])
 NUM_RUNS = int(os.environ["N_RUNS"])
 OBJECTIVE_NAME = os.environ["OBJECTIVE"]
 SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
-# DIMENSIONS = 100
-# NUM_RUNS = 5
-# OBJECTIVE_NAME = "CEC21"
-# SWITCH_AFTER_ITERATIONS = [750]
-#
+# DIMENSIONS = 10
+# NUM_RUNS = 1
+# OBJECTIVE_NAME = "CEC25"
+# SWITCH_AFTER_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
+
 OBJECTIVE, OPTIMUM = cast(
     tuple[Callable, float],
     get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
@@ -76,6 +78,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
         callback=callback,
         stopper=BFBGSEarlyStopping(MAXEVALS),
         bounds=(-BOUNDS, BOUNDS),
+        identifier="bfgs",
     )
     bfgs.optimize()
     logger.info(f"{idx}: done with BFGS")
@@ -111,9 +114,9 @@ def visualize_results(
     ax = plt.gca()
 
     if len(bfgs) == 1:
-        plt.plot(bfgs.index, bfgs["best"], label="BFGS", marker="o")
+        plt.plot(bfgs.index, bfgs["best_bfgs"], label="BFGS", marker="o")
     else:
-        plt.plot(bfgs.index[1:], bfgs["best"][1:], label="BFGS")
+        plt.plot(bfgs.index[1:], bfgs["best_bfgs"][1:], label="BFGS")
 
     cmabfgs["best_vanilla_cmaes"].dropna().plot(ax=ax)
 
@@ -150,10 +153,8 @@ def main():
     cmabfgs_agg = aggregate_dataframes([val[0] for val in rv])
     bfgs_agg = aggregate_dataframes([val[1] for val in rv])
 
-    # Prefix columns
-    bfgs_prefixed = bfgs_agg.add_prefix("bfgs_")
     # Concatenate along columns
-    combined = bfgs_prefixed.join(cmabfgs_agg, how="outer")
+    combined = bfgs_agg.join(cmabfgs_agg, how="outer")
     # Save to CSV
     combined.to_csv(
         DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
@@ -164,7 +165,7 @@ def main():
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, level="ERROR")
+    logger.add(sys.stderr, level=LOG_LEVEL)
 
     os.makedirs(RESULT_DIR, exist_ok=True)
     os.makedirs(PLOT_EXPORT_DIR, exist_ok=True)
