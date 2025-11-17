@@ -17,6 +17,7 @@ def load_results_from_directory(dir_path: Path):
 
 
 def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
+    dfs = [df.drop(columns=["run_id"]) for df in dfs]
     common_index = np.unique(
         np.concatenate([df.index.values for df in dfs])  # pyright: ignore[reportCallIssue, reportArgumentType]
     )

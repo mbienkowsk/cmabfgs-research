@@ -85,7 +85,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
     return callback.as_dataframe()
 
 
-def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
+def single_run(idx: int) -> DataFrame:
     try:
         seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
         rng = np.random.default_rng(seed)
@@ -94,16 +94,15 @@ def single_run(idx: int) -> tuple[DataFrame, DataFrame]:
             (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
         )
         cmabfgs = run_multicmabfgs(x, seed, idx)
-        bfgs = run_bfgs(x, seed, idx)
-        return cmabfgs, bfgs
+        bfgs = run_bfgs(x, seed, idx).drop(columns=["run_id"])
+        return cmabfgs.join(bfgs, how="outer")
     except Exception as e:
         logger.error(f"Error in run {idx}: {e}")
         raise e
 
 
 def visualize_results(
-    bfgs: DataFrame,
-    cmabfgs: DataFrame,
+    df: DataFrame,
     save_to: Path = PLOT_EXPORT_DIR,
     dimensions=DIMENSIONS,
     switch_after_iterations=SWITCH_AFTER_ITERATIONS,
@@ -113,15 +112,11 @@ def visualize_results(
     plt.figure(figsize=(9, 6))
     ax = plt.gca()
 
-    if len(bfgs) == 1:
-        plt.plot(bfgs.index, bfgs["best_bfgs"], label="BFGS", marker="o")
-    else:
-        plt.plot(bfgs.index[1:], bfgs["best_bfgs"][1:], label="BFGS")
-
-    cmabfgs["best_vanilla_cmaes"].dropna().plot(ax=ax)
+    df["best_vanilla_cmaes"].dropna().plot(ax=ax)
+    df["best_bfgs"].dropna().plot(ax=ax)
 
     for i, val in enumerate(switch_after_iterations):
-        cmabfgs[f"best_{val}"].dropna().plot(
+        df[f"best_{val}"].dropna().plot(
             ax=ax, label=f"{val} it/{val * population_size} eval)"
         )
 
@@ -150,17 +145,13 @@ def main():
     with mp.Pool(mp.cpu_count()) as pool:
         rv = pool.map(single_run, range(1, NUM_RUNS + 1))
 
-    cmabfgs_agg = aggregate_dataframes([val[0] for val in rv])
-    bfgs_agg = aggregate_dataframes([val[1] for val in rv])
-
-    # Concatenate along columns
-    combined = bfgs_agg.join(cmabfgs_agg, how="outer")
+    agg = aggregate_dataframes(rv)
     # Save to CSV
-    combined.to_csv(
+    agg.to_csv(
         DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
         index_label="num_evaluations",
     )
-    visualize_results(bfgs_agg, cmabfgs_agg)  # pyright: ignore[reportArgumentType]
+    visualize_results(agg)  # pyright: ignore[reportArgumentType]
 
 
 if __name__ == "__main__":

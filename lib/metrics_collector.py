@@ -27,7 +27,7 @@ class MetricsCollector:
             key = f"{metric.key()}_{identifier}" if identifier else metric.key()
             entry[key] = metric.collect(state)  # pyright: ignore[reportArgumentType]
 
-        entry_df = pd.DataFrame(entry).set_index("num_evaluations")
+        entry_df = pd.DataFrame(entry)
         if self.data.empty:
             self.data = entry_df
         else:
@@ -39,7 +39,8 @@ class MetricsCollector:
 
     def as_dataframe(self):
         # squash entries with duplicate indices
-        df = cast(pd.DataFrame, self.data.groupby(self.data.index).max())
+        df = cast(pd.DataFrame, self.data)
+        df = self.data.groupby(["num_evaluations"]).max()
         df["run_id"] = self.run_id
         return df
 
