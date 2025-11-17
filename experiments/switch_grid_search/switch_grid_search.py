@@ -6,6 +6,7 @@ from typing import Callable, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from loguru import logger
 from pandas import DataFrame
 from sympy import prime
@@ -148,12 +149,15 @@ def main():
     with mp.Pool(mp.cpu_count()) as pool:
         rv = pool.map(single_run, range(1, NUM_RUNS + 1))
 
-    agg = aggregate_dataframes(rv)
-    # Save to CSV
-    agg.to_csv(
-        DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}_combined.csv",
-        index_label="num_evaluations",
+    concatenated = pd.concat(rv)
+    concatenated["run_id"] = concatenated["run_id"].astype("Int64")
+    concatenated.to_parquet(
+        DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}.parquet",
+        index=True,
+        compression="brotli",
     )
+
+    agg = aggregate_dataframes(rv)
     visualize_results(agg)  # pyright: ignore[reportArgumentType]
 
 
