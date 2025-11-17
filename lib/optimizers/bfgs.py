@@ -83,7 +83,7 @@ class BFGS(Optimizer):
                     f"BFGS {self.identifier} did not converge: {result.message}"
                 )
             else:
-                logger.info(
+                logger.debug(
                     f"BFGS {self.identifier} converged successfully, message: {result.message}"
                 )
         except StopOptimization as e:

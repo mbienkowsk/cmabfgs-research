@@ -19,7 +19,7 @@ from sympy import prime
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
-from lib.optimizers import BFGS, CMAES, LBFGS
+from lib.optimizers import BFGS, CMAES, L_BFGS_B
 from lib.optimizers.cmabfgs import CMABFGS
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter, extract_dim_from_path, extract_objective_from_path
@@ -119,7 +119,7 @@ def run_lbfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "bfgs")
-    bfgs = LBFGS(x, seed=seed, fun=counter, callback=callback)
+    bfgs = L_BFGS_B(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()
     callback.export_to_csv(
         LBFGS_RESULT_DIR / f"{idx}.csv",

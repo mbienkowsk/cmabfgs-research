@@ -3,7 +3,7 @@ from .bfgs import BFGS
 from .cmabfgs import CMABFGS
 from .cmaes import CMAES
 from .goldencmaes import GoldenCMAES
-from .lbfgs import LBFGS
+from .lbfgs import L_BFGS_B
 
 __all__ = [
     "Optimizer",
@@ -11,5 +11,5 @@ __all__ = [
     "CMABFGS",
     "CMAES",
     "GoldenCMAES",
-    "LBFGS",
+    "L_BFGS_B",
 ]
