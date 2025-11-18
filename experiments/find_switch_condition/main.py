@@ -13,8 +13,8 @@ from sympy import prime
 from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
-from lib.optimizers.cmabfgs import CMABFGS
 from lib.optimizers.cmaes import CMAES
+from lib.optimizers.hybrids import CMABFGS
 from lib.serde import aggregate_dataframes
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter

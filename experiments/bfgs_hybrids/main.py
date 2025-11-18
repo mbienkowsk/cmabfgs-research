@@ -20,7 +20,7 @@ from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers import BFGS, CMAES, L_BFGS_B
-from lib.optimizers.cmabfgs import CMABFGS
+from lib.optimizers.hybrids import CMABFGS
 from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter, extract_dim_from_path, extract_objective_from_path
 

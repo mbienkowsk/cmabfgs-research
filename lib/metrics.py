@@ -6,8 +6,8 @@ import pandas as pd
 from loguru import logger
 
 from lib.optimizers.bfgs import BFGSState
-from lib.optimizers.cmabfgs import CMABFGSState, CMAESState
 from lib.optimizers.cmaes import CMAESState
+from lib.optimizers.hybrids.cmabfgs import CMABFGSState
 
 
 class Metric(ABC):
