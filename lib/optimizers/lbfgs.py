@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter
 
-LBFGS_GTOL = 1e-8
+LBFGS_GTOL = 1e-12
 
 
 @dataclass
@@ -55,7 +55,7 @@ class L_BFGS_B(Optimizer):
             self.state.current_result = intermediate_result
             # bounds handled by scipy
             self.stopper(self.state)
-            return self.callback(self.state)
+            return self.callback(self.state, self.identifier)
 
         try:
             result = minimize(
@@ -75,7 +75,7 @@ class L_BFGS_B(Optimizer):
                 )
             else:
                 logger.debug(
-                    f"L-BFGS-B {self.identifier} converged successfully, message: {result.message}"
+                    f"L-BFGS-B {self.identifier} converged successfully at {self.state.best_solutions[-1]}, message: {result.message}"
                 )
 
         except StopOptimization as e:

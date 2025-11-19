@@ -8,6 +8,7 @@ from loguru import logger
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
 from lib.optimizers.hybrids.cmabfgs import CMABFGSState
+from lib.optimizers.lbfgs import L_BFGS_BState
 
 
 class Metric(ABC):
@@ -29,7 +30,7 @@ class Metric(ABC):
     def collect(self, state: CMAESState | BFGSState) -> Any:
         if isinstance(state, CMAESState):
             return self.collect_cmaes(state)
-        elif isinstance(state, BFGSState):
+        elif isinstance(state, (L_BFGS_BState, BFGSState)):
             return self.collect_bfgs(state)
 
 
