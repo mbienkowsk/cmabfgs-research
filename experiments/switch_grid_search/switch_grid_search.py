@@ -15,13 +15,15 @@ from lib.funs import get_function_by_name
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
-from lib.optimizers.multicmabfgs import MultiCMABFGS
+from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
+from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
 DEBUG = False
+MULTI_CLASS = MultiCMALBFGSB
 
 BOUNDS = 100
 
@@ -45,7 +47,7 @@ MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
 
-RESULT_DIR = Path(__file__).parent / "results"
+RESULT_DIR = Path(__file__).parent / "results" / MULTI_CLASS.__name__.lower()
 DATA_DIR = RESULT_DIR / "data"
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
@@ -53,13 +55,15 @@ colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
 plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
-def run_multicmabfgs(x: np.ndarray, seed: int, idx: int):
+def run_multi(
+    klass: type[MultiCMABFGS | MultiCMALBFGSB], x: np.ndarray, seed: int, idx: int
+):
     counter = EvalCounter(OBJECTIVE, bounds=(-BOUNDS, BOUNDS))
     metrics = [
         BestSoFar(OPTIMUM),
     ]
     callback = MetricsCollector(metrics, "cmabfgs", idx)
-    optimizer = MultiCMABFGS(
+    optimizer = klass(
         x,
         SWITCH_AFTER_ITERATIONS,
         seed,
@@ -98,7 +102,7 @@ def single_run(idx: int) -> DataFrame:
             np.ndarray,  # pyright: ignore[reportArgumentType]
             (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
         )
-        cmabfgs = run_multicmabfgs(x, seed, idx)
+        cmabfgs = run_multi(MULTI_CLASS, x, seed, idx)
         bfgs = run_bfgs(x, seed, idx).drop(columns=["run_id"])
         return cmabfgs.join(bfgs, how="outer")
     except Exception as e:
@@ -141,7 +145,9 @@ def visualize_results(
     plt.xlabel("Liczba ewaluacji")
     plt.ylabel("best so far")
     obj_name = function_name if function_name is not None else OBJECTIVE_NAME
-    plt.title(f"BFGS vs CMAES vs CMABFGS, funkcja {obj_name}, {dimensions} wymiarów")
+    plt.title(
+        f"BFGS vs CMAES vs {MULTI_CLASS.__name__}, funkcja {obj_name}, {dimensions} wymiarów"
+    )
     plt.legend()
     plt.savefig(save_to / f"{obj_name}_{dimensions}.png", dpi=300)
 
