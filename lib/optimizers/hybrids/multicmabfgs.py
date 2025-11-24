@@ -26,7 +26,6 @@ class MultiCMABFGS(Optimizer):
         sigma: int = 1,
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations
-        self.callback = callback
         self.cmaes = CMAES(
             fun,
             x0,
