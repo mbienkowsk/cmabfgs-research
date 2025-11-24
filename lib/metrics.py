@@ -7,8 +7,10 @@ from loguru import logger
 
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
+from lib.optimizers.golden_search import GoldenSearchState
 from lib.optimizers.hybrids.cmabfgs import CMABFGSState
 from lib.optimizers.lbfgs import L_BFGS_BState
+from lib.util import EvalCounter
 
 
 class Metric(ABC):
@@ -21,17 +23,22 @@ class Metric(ABC):
     def collect_bfgs(self, state: BFGSState) -> Any:
         raise NotImplementedError
 
+    def collect_from_counter(self, counter: EvalCounter) -> Any:
+        raise NotImplementedError
+
     def collect_cmabfgs(self, state: CMABFGSState) -> Any:
         if state.mode == "CMAES":
             return self.collect_cmaes(state.cmaes_state)
         elif state.mode == "BFGS":
             return self.collect_bfgs(state.bfgs_state)
 
-    def collect(self, state: CMAESState | BFGSState) -> Any:
+    def collect(self, state: CMAESState | BFGSState | GoldenSearchState) -> Any:
         if isinstance(state, CMAESState):
             return self.collect_cmaes(state)
         elif isinstance(state, (L_BFGS_BState, BFGSState)):
             return self.collect_bfgs(state)
+        elif isinstance(state, GoldenSearchState):
+            return self.collect_from_counter(state.counter)
 
 
 class MeanEvaluation(Metric):
@@ -64,6 +71,13 @@ class BestSoFar(Metric):
     def collect_bfgs(self, state: BFGSState):
         return (
             state.best_solutions[-1] - self.optimum if state.best_solutions else pd.NA
+        )
+
+    def collect_from_counter(self, counter: EvalCounter):
+        return (
+            counter.best_solutions[-1] - self.optimum
+            if counter.best_solutions
+            else pd.NA
         )
 
 
