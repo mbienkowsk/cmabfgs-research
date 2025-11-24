@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import numpy as np
 from loguru import logger
 from scipy.optimize import golden
 
 from lib.bound_handling import check_bounds
-from lib.metrics_collector import MetricsCollector
 from lib.optimizers.base import Optimizer
 from lib.util import EvalCounter, one_dimensional
+
+if TYPE_CHECKING:
+    from lib.metrics_collector import MetricsCollector
 
 
 @dataclass
@@ -22,7 +24,7 @@ class GoldenSearch(Optimizer):
         x: np.ndarray,
         direction: np.ndarray,
         fun: EvalCounter,
-        callback: MetricsCollector,
+        callback: "MetricsCollector",
         bounds: tuple[int, int] = (-100, 100),
         identifier="",
     ):
