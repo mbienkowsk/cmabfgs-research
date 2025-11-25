@@ -24,6 +24,8 @@ class MultiCMABFGS(Optimizer):
         cmaes_stopper: CMAESEarlyStopping,
         bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
+        restart_cmaes: bool = False,  # TODO: implement
+        precondition_bfgs: bool = True,  # TODO: implement
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations
         self.cmaes = CMAES(

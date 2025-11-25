@@ -16,6 +16,7 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
+from lib.optimizers.hybrids.goldencmaes import GoldenCMAES
 from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
@@ -23,6 +24,7 @@ from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
 DEBUG = False
+PLOT_SUFFIX = "(restart bez uwarunkowania)"
 MULTI_CLASS = MultiCMALBFGSB
 
 BOUNDS = 100
@@ -55,14 +57,21 @@ colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
 plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
-def run_multi(
+def run_multi_hybrid(
     klass: type[MultiCMABFGS | MultiCMALBFGSB], x: np.ndarray, seed: int, idx: int
 ):
+    class_to_collection_method = {
+        MultiCMABFGS: "cmabfgs",
+        MultiCMALBFGSB: "cmabfgs",
+        GoldenCMAES: "goldencmaes",
+    }
+    collection_method = class_to_collection_method[klass]
+
     counter = EvalCounter(OBJECTIVE, bounds=(-BOUNDS, BOUNDS))
     metrics = [
         BestSoFar(OPTIMUM),
     ]
-    callback = MetricsCollector(metrics, "cmabfgs", idx)
+    callback = MetricsCollector(metrics, collection_method, idx)
     optimizer = klass(
         x,
         SWITCH_AFTER_ITERATIONS,
@@ -72,6 +81,7 @@ def run_multi(
         callback,
         CMAESEarlyStopping(MAXEVALS, tolfun=1e-9),
         bounds=(-BOUNDS, BOUNDS),
+        restart_cmaes=True,
     )
     optimizer.optimize()
     return callback.as_dataframe()
@@ -102,9 +112,10 @@ def single_run(idx: int) -> DataFrame:
             np.ndarray,  # pyright: ignore[reportArgumentType]
             (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
         )
-        cmabfgs = run_multi(MULTI_CLASS, x, seed, idx)
+        multi_optimizer = run_multi_hybrid(MULTI_CLASS, x, seed, idx)
         bfgs = run_bfgs(x, seed, idx).drop(columns=["run_id"])
-        return cmabfgs.join(bfgs, how="outer")
+        # lbfgs = run_lbfgsb(x, seed, idx).drop(columns=["run_id"])
+        return multi_optimizer.join(bfgs, how="outer")  # .join(lbfgs, how="outer")
     except Exception as e:
         logger.error(f"Error in run {idx}: {e}")
         raise e
@@ -116,6 +127,7 @@ def visualize_results(
     dimensions=DIMENSIONS,
     switch_after_iterations=SWITCH_AFTER_ITERATIONS,
     function_name: str | None = None,
+    suffix: str = "",
 ):
     population_size = 4 * dimensions
     plt.figure(figsize=(9, 6))
@@ -146,7 +158,10 @@ def visualize_results(
     plt.ylabel("best so far")
     obj_name = function_name if function_name is not None else OBJECTIVE_NAME
     plt.title(
-        f"BFGS vs CMAES vs {MULTI_CLASS.__name__}, funkcja {obj_name}, {dimensions} wymiarów"
+        (
+            f"BFGS vs CMAES vs {MULTI_CLASS.__name__}, funkcja {obj_name}, {dimensions} wymiarów "
+            + suffix
+        ).strip()
     )
     plt.legend()
     plt.savefig(save_to / f"{obj_name}_{dimensions}.png", dpi=300)
@@ -170,7 +185,9 @@ def main():
     )
 
     agg = aggregate_dataframes(rv)
-    visualize_results(agg)  # pyright: ignore[reportArgumentType]
+    # if not validate_results(agg):  # pyright: ignore[reportArgumentType]
+    #     raise RuntimeError("Negative value detected in optimization results.")
+    visualize_results(agg, suffix=PLOT_SUFFIX)  # pyright: ignore[reportArgumentType]
 
 
 if __name__ == "__main__":

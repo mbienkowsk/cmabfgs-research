@@ -3,6 +3,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
+from loguru import logger
 
 if TYPE_CHECKING:
     from lib.optimizers.bfgs import BFGSState
@@ -49,13 +50,16 @@ class CMAESEarlyStopping:
         )
         return np.abs(best - worst) < self.tolfun
 
-    def __call__(self, state: "CMAESState"):
-        return any(
-            (
-                check_max_evals(self.max_evals, state),
-                self.check_tolfun(state),
-            )
-        )
+    def __call__(self, state: "CMAESState", identifier: str = ""):
+        maxevals = check_max_evals(self.max_evals, state)
+        tolfun = self.check_tolfun(state)
+
+        if maxevals:
+            logger.debug(f"[CMA-ES {identifier}] Stopping: reached max evals")
+        if tolfun:
+            logger.debug(f"[CMA-ES {identifier}] Stopping: tolfun")
+
+        return any((maxevals, tolfun))
 
 
 @dataclass

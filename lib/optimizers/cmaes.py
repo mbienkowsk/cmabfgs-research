@@ -30,6 +30,12 @@ class CMAESState:
     def best_solutions(self):
         return self.counter.best_solutions
 
+    @property
+    def best_so_far(self):
+        return (
+            self.counter.best_solutions[-1] if self.counter.best_solutions else np.inf
+        )
+
 
 class CMAES(Optimizer):
     def __init__(
@@ -99,7 +105,7 @@ class CMAES(Optimizer):
 
     @override
     def optimize(self):
-        while not self.stopper(self.state):
+        while not self.stopper(self.state, self.identifier):
             _ = self.step()
 
     @property

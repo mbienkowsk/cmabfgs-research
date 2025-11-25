@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 from lib.optimizers.base import Optimizer
 from lib.optimizers.cmaes import CMAES
 from lib.optimizers.lbfgs import L_BFGS_B
@@ -24,6 +26,7 @@ class MultiCMALBFGSB(Optimizer):
         cmaes_stopper: CMAESEarlyStopping,
         bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
+        restart_cmaes: bool = False,
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations
         self.callback = callback
@@ -38,10 +41,13 @@ class MultiCMALBFGSB(Optimizer):
             sigma,
             identifier="vanilla_cmaes",
         )
+        self.popsize = popsize
         self.seed = seed
         self.fun = fun
         self.callback = callback
         self.bounds = bounds
+        self.restart_cmaes = restart_cmaes
+        self.sigma = sigma
 
     def optimize(self):
         shifted = [0] + self.nums_cmaes_iterations[:-1]
@@ -51,18 +57,39 @@ class MultiCMALBFGSB(Optimizer):
                 self.cmaes.step()
 
             identifier = str(self.nums_cmaes_iterations[idx])
+            fun = self.fun.copy_with_identifier(
+                f"lbfgsb_{identifier}"
+            )  # lbfgsb gets its own eval counter
+
             lbfgsb = L_BFGS_B(
                 self.cmaes.mean,
-                self.fun.copy_with_identifier(
-                    f"lbfgsb_{identifier}"
-                ),  # lbfgsb gets its own eval counter
+                fun,
                 self.callback,
                 BFGSEarlyStopping(self.cmaes.evals_remaining),
                 self.bounds,
                 identifier=identifier,
             )
-            self.callback(lbfgsb.state, identifier)
-            # TODO: might wanna artifically add a point here
             lbfgsb.optimize()
+            self.callback(lbfgsb.state, identifier)
+
+            if self.restart_cmaes:
+                logger.debug(
+                    f"L-BFGS-B {identifier}: Restarting CMA-ES, y={lbfgsb.y}, evals remaining={self.cmaes.evals_remaining}"
+                )
+                es = CMAES(
+                    fun,
+                    lbfgsb.x,
+                    self.popsize,
+                    self.seed,
+                    CMAESEarlyStopping(self.cmaes.evals_remaining),
+                    self.callback,
+                    self.bounds,
+                    self.sigma,
+                    identifier=identifier,
+                )
+                es.optimize()
+                logger.debug(
+                    f"L-BFGS-B {identifier}: second iteration of CMA-ES finished at y={es.state.best_so_far}"
+                )
 
         self.cmaes.optimize()

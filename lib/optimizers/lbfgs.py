@@ -74,9 +74,23 @@ class L_BFGS_B(Optimizer):
                     f"L-BFGS-B {self.identifier} did not converge: {result.message}"
                 )
             else:
+                callback_wrapper(result)
                 logger.debug(
                     f"L-BFGS-B {self.identifier} converged successfully at {self.state.best_solutions[-1]}, message: {result.message}"
                 )
 
         except StopOptimization as e:
             logger.info(f"L-BFGS-B {self.identifier} stopped early: {e}")
+
+    @property
+    def x(self):
+        if not self.state.current_result:
+            raise RuntimeError("x called on L-BFGS-B before running it")
+        return self.state.current_result.x
+
+    @property
+    def y(self):
+        """y of the optimization result"""
+        if not self.state.current_result:
+            raise RuntimeError("y called on L-BFGS-B before running it")
+        return self.state.current_result.fun
