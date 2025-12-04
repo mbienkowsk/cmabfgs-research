@@ -58,7 +58,7 @@ def get_function_by_name(
         try:
             idx = int(name[3:])
             fn = get_cec2017_for_dim(idx, dim)
-            return (fn.evaluate, fn.f_global) if with_optimum else fn.evaluate  # pyright: ignore[reportReturnType]
+            return (fn, fn.y_global) if with_optimum else fn  # pyright: ignore[reportReturnType]
         except ValueError:
             raise ValueError(f"Invalid CEC function name: {name}")
         except Exception as e:

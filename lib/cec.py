@@ -1,10 +1,10 @@
-from opfunu.cec_based import CecBenchmark, cec2017
+import cecxx
 
 
-def get_cec2017_for_dim(idx: int, dim: int) -> CecBenchmark:
-    """Get an opfunu.CecBenchmark corresponding to the given function in dim dimensions"""
-    if idx < 1 or idx > 29:
+def get_cec2017_for_dim(idx: int, dim: int):
+    if idx < 1 or idx > 30:
         raise ValueError("invalid idx for cec2017 fun")
 
-    fname = f"F{idx}2017"
-    return getattr(cec2017, fname)(dim)
+    return cecxx.get_cec_function(
+        cecxx.CECEdition.CEC2017, idx, dim, subtract_y_global=True
+    )
