@@ -17,7 +17,6 @@ from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
 from lib.optimizers.hybrids.goldencmaes import GoldenCMAES
-from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
@@ -114,8 +113,7 @@ def single_run(idx: int) -> DataFrame:
         )
         multi_optimizer = run_multi_hybrid(MULTI_CLASS, x, seed, idx)
         bfgs = run_bfgs(x, seed, idx).drop(columns=["run_id"])
-        # lbfgs = run_lbfgsb(x, seed, idx).drop(columns=["run_id"])
-        return multi_optimizer.join(bfgs, how="outer")  # .join(lbfgs, how="outer")
+        return multi_optimizer.join(bfgs, how="outer")
     except Exception as e:
         logger.error(f"Error in run {idx}: {e}")
         raise e
