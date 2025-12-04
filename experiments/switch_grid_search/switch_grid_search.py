@@ -22,7 +22,7 @@ from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
-DEBUG = False
+DEBUG = os.getenv("DEBUG", False)
 PLOT_SUFFIX = "(restart bez uwarunkowania)"
 MULTI_CLASS = MultiCMALBFGSB
 
