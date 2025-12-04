@@ -25,7 +25,7 @@ class MultiCMABFGS(Optimizer):
         bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
         restart_cmaes: bool = False,  # TODO: implement
-        precondition_bfgs: bool = True,  # TODO: implement
+        precondition: bool = False,
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations
         self.cmaes = CMAES(
@@ -43,6 +43,8 @@ class MultiCMABFGS(Optimizer):
         self.fun = fun
         self.callback = callback
         self.bounds = bounds
+        self.precondition = precondition
+        self.x0 = x0
 
     def optimize(self):
         shifted = [0] + self.nums_cmaes_iterations[:-1]
@@ -51,6 +53,11 @@ class MultiCMABFGS(Optimizer):
             for _ in range(switch_after):
                 self.cmaes.step()
 
+            hess_inv0 = (
+                (self.cmaes.C + self.cmaes.C.T) / 2
+                if self.precondition
+                else np.eye(self.x0.shape[0], self.x0.shape[0])
+            )
             identifier = str(self.nums_cmaes_iterations[idx])
             bfgs = BFGS(
                 self.cmaes.mean,
@@ -61,7 +68,7 @@ class MultiCMABFGS(Optimizer):
                 BFGSEarlyStopping(self.cmaes.evals_remaining),
                 self.bounds,
                 identifier=identifier,
-                hess_inv0=(self.cmaes.C + self.cmaes.C.T) / 2,
+                hess_inv0=hess_inv0,
             )
             self.callback(bfgs.state, identifier)
             # TODO: might wanna artifically add a point here
