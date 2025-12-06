@@ -85,12 +85,11 @@ class L_BFGS_B(Optimizer):
     @property
     def x(self):
         if not self.state.current_result:
-            raise RuntimeError("x called on L-BFGS-B before running it")
+            # it failed before producing any result, start from its starting point
+            return self.x0
         return self.state.current_result.x
 
     @property
     def y(self):
         """y of the optimization result"""
-        if not self.state.current_result:
-            raise RuntimeError("y called on L-BFGS-B before running it")
-        return self.state.current_result.fun
+        return self.state.counter.best_so_far

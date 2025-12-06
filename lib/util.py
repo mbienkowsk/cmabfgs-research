@@ -1,6 +1,5 @@
 import re
 from collections.abc import Iterable
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -47,7 +46,7 @@ class EvalCounter:
         self.num_evaluations += 1
 
         y = self.fun(x)
-        best_so_far = self.best_solutions[-1] if self.best_solutions else np.inf
+        best_so_far = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
             msg = (
@@ -66,10 +65,14 @@ class EvalCounter:
 
         return y
 
+    @property
+    def best_so_far(self):
+        return self.best_solutions[-1] if self.best_solutions else np.inf
+
     def copy_with_identifier(self, identifier: str):
-        rv = deepcopy(self)
-        rv.identifier = identifier
-        return rv
+        return EvalCounter(
+            self.fun, self.num_evaluations, self.best_solutions, self.bounds, identifier
+        )
 
 
 def one_dimensional(fun: Callable, x, d):

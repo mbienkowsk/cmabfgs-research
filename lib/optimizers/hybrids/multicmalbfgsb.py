@@ -89,7 +89,7 @@ class MultiCMALBFGSB(Optimizer):
                 )
                 es.optimize()
                 logger.debug(
-                    f"L-BFGS-B {identifier}: second iteration of CMA-ES finished at y={es.state.best_so_far}"
+                    f"L-BFGS-B {identifier}: second iteration of CMA-ES finished at y={es.state.counter.best_so_far}"
                 )
 
         self.cmaes.optimize()
