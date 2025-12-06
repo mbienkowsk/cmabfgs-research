@@ -40,10 +40,6 @@ else:
     OBJECTIVE_NAME = os.environ["OBJECTIVE"]
     SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
 
-OBJECTIVE, OPTIMUM = cast(
-    tuple[Callable, float],
-    get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
-)
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 
@@ -57,7 +53,11 @@ plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
 def run_multi_hybrid(
-    klass: type[MultiCMABFGS | MultiCMALBFGSB], x: np.ndarray, seed: int, idx: int
+    klass: type[MultiCMABFGS | MultiCMALBFGSB],
+    objective: Callable[[np.ndarray], float | np.ndarray],
+    x: np.ndarray,
+    seed: int,
+    idx: int,
 ):
     class_to_collection_method = {
         MultiCMABFGS: "cmabfgs",
@@ -66,9 +66,9 @@ def run_multi_hybrid(
     }
     collection_method = class_to_collection_method[klass]
 
-    counter = EvalCounter(OBJECTIVE, bounds=(-BOUNDS, BOUNDS))
+    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))
     metrics = [
-        BestSoFar(OPTIMUM),
+        BestSoFar(),
     ]
     callback = MetricsCollector(metrics, collection_method, idx)
     optimizer = klass(
@@ -86,9 +86,14 @@ def run_multi_hybrid(
     return callback.as_dataframe()
 
 
-def run_bfgs(x: np.ndarray, seed: int, idx: int):
-    counter = EvalCounter(OBJECTIVE)
-    metrics = [BestSoFar(OPTIMUM)]
+def run_bfgs(
+    objective: Callable[[np.ndarray], float | np.ndarray],
+    x: np.ndarray,
+    seed: int,
+    idx: int,
+):
+    counter = EvalCounter(objective)
+    metrics = [BestSoFar()]
     callback = MetricsCollector(metrics, "bfgs", idx)
     bfgs = BFGS(
         x,
@@ -105,14 +110,18 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 
 def single_run(idx: int) -> DataFrame:
     try:
+        objective, optimum = cast(
+            tuple[Callable, float],
+            get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
+        )
         seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
         rng = np.random.default_rng(seed)
         x = cast(
             np.ndarray,  # pyright: ignore[reportArgumentType]
             (rng.random(DIMENSIONS) - 0.5) * 2 * BOUNDS,  # pyright: ignore[reportArgumentType]
         )
-        multi_optimizer = run_multi_hybrid(MULTI_CLASS, x, seed, idx)
-        bfgs = run_bfgs(x, seed, idx).drop(columns=["run_id"])
+        multi_optimizer = run_multi_hybrid(MULTI_CLASS, objective, x, seed, idx)
+        bfgs = run_bfgs(objective, x, seed, idx).drop(columns=["run_id"])
         return multi_optimizer.join(bfgs, how="outer")
     except Exception as e:
         logger.error(f"Error in run {idx}: {e}")
@@ -183,8 +192,6 @@ def main():
     )
 
     agg = aggregate_dataframes(rv)
-    # if not validate_results(agg):  # pyright: ignore[reportArgumentType]
-    #     raise RuntimeError("Negative value detected in optimization results.")
     visualize_results(agg, suffix=PLOT_SUFFIX)  # pyright: ignore[reportArgumentType]
 
 
