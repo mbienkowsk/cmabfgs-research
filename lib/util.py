@@ -71,7 +71,13 @@ class EvalCounter:
 
     def copy_with_identifier(self, identifier: str):
         return EvalCounter(
-            self.fun, self.num_evaluations, self.best_solutions, self.bounds, identifier
+            self.fun,
+            self.num_evaluations,
+            # NOTE: can't deepcopy cecxx as they're not serializable yet,
+            # things have to be manually deepcopied here to avoid sharing lists!
+            self.best_solutions[:],
+            self.bounds,
+            identifier,
         )
 
 
