@@ -3,3 +3,4 @@ out.log
 err.log
 logs
 experiments/switch_grid_search/results/plots_archived
+experiments/switch_grid_search/.ipynb_checkpoints
