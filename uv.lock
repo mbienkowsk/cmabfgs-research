@@ -13,16 +13,21 @@ wheels = [
 
 [[package]]
 name = "cecxx"
-version = "0.1.0a1"
-source = { registry = "https://test.pypi.org/simple/" }
+version = "0.1.0a2"
+source = { editable = "../../../projects/cecxx/python" }
 dependencies = [
     { name = "nanobind" },
     { name = "numpy" },
 ]
-sdist = { url = "https://test-files.pythonhosted.org/packages/55/9a/85b77fe6db73d85c89a0e831cd68ac66ffeecffb50629b4523b1f506d0e3/cecxx-0.1.0a1.tar.gz", hash = "sha256:e30c0d5d4b9479315d580d1cb28383f8f9a6abdc19537a8fb3cd124070206c4c", size = 276435, upload-time = "2025-12-04T17:04:17.482Z" }
-wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/a6/ba/83c6628151462b235ad24e490670a2ee98de4dbeeaf8659105c48223b264/cecxx-0.1.0a1-cp312-abi3-manylinux_2_39_x86_64.whl", hash = "sha256:93849cd40668c47bd9f618a8c3b62c87107bf5752b38e36ece361320b4dc76a0", size = 195347, upload-time = "2025-12-04T17:04:14.788Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "nanobind", specifier = ">=2.9.2" },
+    { name = "numpy", specifier = ">=2.3.5" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ipython", specifier = ">=9.7.0" }]
 
 [[package]]
 name = "certifi"
@@ -803,7 +808,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cecxx", specifier = ">=0.1.0a1", index = "https://test.pypi.org/simple/" },
+    { name = "cecxx", editable = "../../../projects/cecxx/python" },
     { name = "cmaes", specifier = ">=0.11.1" },
     { name = "debugpy", specifier = ">=1.8.15" },
     { name = "ipython", specifier = ">=9.4.0" },
