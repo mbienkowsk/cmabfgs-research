@@ -59,11 +59,13 @@ class MultiCMABFGS(Optimizer):
                 else np.eye(self.x0.shape[0], self.x0.shape[0])
             )
             identifier = str(self.nums_cmaes_iterations[idx])
+            fun = self.fun.copy_with_identifier(f"bfgs_{identifier}")
+            # bfgs gets its own eval counter
+            self.callback(self.cmaes.state, identifier)
+
             bfgs = BFGS(
                 self.cmaes.mean,
-                self.fun.copy_with_identifier(
-                    f"bfgs_{identifier}"
-                ),  # bfgs gets its own eval counter
+                fun,
                 self.callback,
                 BFGSEarlyStopping(self.cmaes.evals_remaining),
                 self.bounds,

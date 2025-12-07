@@ -61,6 +61,9 @@ class MultiCMALBFGSB(Optimizer):
                 f"lbfgsb_{identifier}"
             )  # lbfgsb gets its own eval counter
 
+            # cheat a little to log the starting point, this gets saved to lbfgsb's column
+            self.callback(self.cmaes.state, identifier)
+
             lbfgsb = L_BFGS_B(
                 self.cmaes.mean,
                 fun,
