@@ -17,6 +17,7 @@ from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
 from lib.optimizers.hybrids.goldencmaes import GoldenCMAES
+from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter
@@ -108,11 +109,33 @@ def run_bfgs(
     return callback.as_dataframe()
 
 
+def run_l_bfgs_b(
+    objective: Callable[[np.ndarray], float | np.ndarray],
+    x: np.ndarray,
+    seed: int,
+    idx: int,
+):
+    counter = EvalCounter(objective)
+    metrics = [BestSoFar()]
+    callback = MetricsCollector(metrics, "bfgs", idx)
+    l_bfgs_b = L_BFGS_B(
+        x,
+        fun=counter,
+        callback=callback,
+        stopper=BFGSEarlyStopping(MAXEVALS),
+        bounds=(-BOUNDS, BOUNDS),
+        identifier="l-bfgs-b",
+    )
+    l_bfgs_b.optimize()
+    logger.info(f"{idx}: done with L-BFGS-B")
+    return callback.as_dataframe()
+
+
 def single_run(idx: int) -> DataFrame:
     try:
-        objective, optimum = cast(
-            tuple[Callable, float],
-            get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=True),
+        objective = cast(
+            Callable,
+            get_function_by_name(OBJECTIVE_NAME, DIMENSIONS, with_optimum=False),
         )
         seed: int = prime(idx)  # pyright: ignore[reportAssignmentType]
         rng = np.random.default_rng(seed)
@@ -122,7 +145,8 @@ def single_run(idx: int) -> DataFrame:
         )
         multi_optimizer = run_multi_hybrid(MULTI_CLASS, objective, x, seed, idx)
         bfgs = run_bfgs(objective, x, seed, idx).drop(columns=["run_id"])
-        return multi_optimizer.join(bfgs, how="outer")
+        lbfgs = run_l_bfgs_b(objective, x, seed, idx).drop(columns=["run_id"])
+        return multi_optimizer.join(bfgs, how="outer").join(lbfgs, how="outer")
     except Exception as e:
         logger.error(f"Error in run {idx}: {e}")
         raise e
@@ -142,6 +166,7 @@ def visualize_results(
 
     df["best_vanilla_cmaes"].dropna().plot(ax=ax)
     df["best_bfgs"].dropna().plot(ax=ax)
+    df["best_l-bfgs-b"].dropna().plot(ax=ax)
 
     for i, val in enumerate(switch_after_iterations):
         df[f"best_{val}"].dropna().plot(
@@ -184,7 +209,6 @@ def main():
         rv = pool.map(single_run, run_indices)
 
     concatenated = pd.concat(rv)
-    concatenated["run_id"] = concatenated["run_id"].astype("Int64")
     concatenated.to_parquet(
         DATA_DIR / f"{OBJECTIVE_NAME}_{DIMENSIONS}.parquet",
         index=True,
