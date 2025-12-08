@@ -24,6 +24,7 @@ class MultiCMALBFGSB(Optimizer):
         popsize: int,
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
+        maxevals: int,
         bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
         restart_cmaes: bool = False,
@@ -45,6 +46,7 @@ class MultiCMALBFGSB(Optimizer):
         self.seed = seed
         self.fun = fun
         self.callback = callback
+        self.maxevals = maxevals
         self.bounds = bounds
         self.restart_cmaes = restart_cmaes
         self.sigma = sigma
@@ -68,12 +70,13 @@ class MultiCMALBFGSB(Optimizer):
                 self.cmaes.mean,
                 fun,
                 self.callback,
-                BFGSEarlyStopping(self.cmaes.evals_remaining),
+                BFGSEarlyStopping(self.maxevals),
                 self.bounds,
                 identifier=identifier,
             )
             lbfgsb.optimize()
             self.callback(lbfgsb.state, identifier)
+            self.cmaes.state.counter.num_evaluations = lbfgsb.state.num_evaluations
 
             if self.restart_cmaes:
                 logger.debug(

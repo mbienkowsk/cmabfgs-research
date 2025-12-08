@@ -22,6 +22,7 @@ class MultiCMABFGS(Optimizer):
         popsize: int,
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
+        maxevals: int,
         bounds: tuple[int, int] = (-100, 100),
         sigma: int = 1,
         restart_cmaes: bool = False,  # TODO: implement
@@ -42,6 +43,7 @@ class MultiCMABFGS(Optimizer):
         self.seed = seed
         self.fun = fun
         self.callback = callback
+        self.maxevals = maxevals
         self.bounds = bounds
         self.precondition = precondition
         self.x0 = x0
@@ -67,13 +69,13 @@ class MultiCMABFGS(Optimizer):
                 self.cmaes.mean,
                 fun,
                 self.callback,
-                BFGSEarlyStopping(self.cmaes.evals_remaining),
+                BFGSEarlyStopping(self.maxevals),
                 self.bounds,
                 identifier=identifier,
                 hess_inv0=hess_inv0,
             )
             self.callback(bfgs.state, identifier)
-            # TODO: might wanna artifically add a point here
             bfgs.optimize()
+            self.cmaes.state.counter.num_evaluations = bfgs.state.num_evaluations
 
         self.cmaes.optimize()

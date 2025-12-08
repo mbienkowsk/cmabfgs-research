@@ -24,7 +24,8 @@ from lib.util import EvalCounter
 
 LOG_LEVEL = "ERROR"
 DEBUG = os.getenv("DEBUG", False)
-PLOT_SUFFIX = "(restart bez uwarunkowania)"
+logger.info(f"Debug set to {DEBUG}")
+PLOT_SUFFIX = ""
 MULTI_CLASS = MultiCMALBFGSB
 
 BOUNDS = 100
@@ -80,6 +81,7 @@ def run_multi_hybrid(
         POPULATION_SIZE,
         callback,
         CMAESEarlyStopping(MAXEVALS, tolfun=1e-9),
+        MAXEVALS,
         bounds=(-BOUNDS, BOUNDS),
         restart_cmaes=True,
     )
