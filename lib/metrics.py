@@ -102,3 +102,20 @@ class CovarianceMatrixDifferenceNorm(Metric):
             return pd.NA
 
         return np.linalg.norm(self.current_covariance_matrix - prev)
+
+
+class SigmaMeasurement(Metric):
+    def key(self):
+        return "sigma"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.sigma
+
+
+class CovarianceMatrixEigenvalueList(Metric):
+    def key(self):
+        return "cov_mat_eigv"
+
+    def collect_cmaes(self, state: CMAESState):
+        eigenvalues, _ = np.linalg.eigh(state.covariance_matrix)
+        return eigenvalues

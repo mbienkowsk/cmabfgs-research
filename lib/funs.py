@@ -3,6 +3,7 @@ from typing import Callable
 
 import numba
 import numpy as np
+import sympy as sp
 
 from lib.cec import get_cec2017_for_dim
 
@@ -18,14 +19,16 @@ class OptFun:
         return np.ones(dim) * self.optimum
 
 
-@numba.njit
-def elliptic(x):
+def _elliptic(x):
     n = len(x)
     rv = 0
     for i in range(n):
         rv += 10 ** (6 * i / (n - 1)) * x[i] ** 2
 
     return rv
+
+
+elliptic = numba.njit(_elliptic)
 
 
 @numba.njit
@@ -35,6 +38,15 @@ def elliptic_grad(x):
     for i in range(n):
         rv[i] = 2 * 10 ** (6 * i / (n - 1)) * x[i]
     return rv
+
+
+def elliptic_hess_for_dim(dim: int):
+    x = sp.symbols(f"x0:{dim}")
+    y = _elliptic(x)
+    hessian_sym = sp.hessian(y, x)
+    # this is a separable quadratic fun, so evaluate it on whatever and return the result
+    # as it's constant for all arguments
+    return sp.lambdify([x], hessian_sym, modules="numpy")(np.zeros((dim, dim)))
 
 
 Elliptic = OptFun(elliptic, elliptic_grad, "Elliptic", 0)

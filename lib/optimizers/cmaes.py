@@ -19,6 +19,7 @@ from .base import Optimizer
 class CMAESState:
     counter: EvalCounter
     covariance_matrix: np.ndarray
+    sigma: float = 1
     mean: np.ndarray = field(default_factory=lambda: np.array([]))
     population_evaluations: list[float] = field(default_factory=list)
 
@@ -69,6 +70,7 @@ class CMAES(Optimizer):
         self.state.population_evaluations = population_evaluations
         self.state.mean = self.mean
         self.state.covariance_matrix = self.inner._C
+        self.state.sigma = self.inner._sigma
 
     @property
     def C(self):
