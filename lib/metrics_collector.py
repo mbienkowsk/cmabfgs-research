@@ -22,12 +22,12 @@ class MetricsCollector:
     def __call__(self, state: HasCounter, identifier: str = ""):
         evals = state.counter.num_evaluations
 
-        entry = {"num_evaluations": [evals]}
+        entry = {"num_evaluations": evals}
         for metric in self.metrics:
             key = f"{metric.key()}_{identifier}" if identifier else metric.key()
             entry[key] = metric.collect(state)  # pyright: ignore[reportArgumentType]
 
-        entry_df = pd.DataFrame(entry)
+        entry_df = pd.DataFrame([entry])
         if self.data.empty:
             self.data = entry_df
         else:
@@ -37,7 +37,7 @@ class MetricsCollector:
         if not (self.data >= 0).all().all():
             raise ValueError("MetricsCollector contains negative values.")
 
-    def as_dataframe(self):
+    def as_dataframe(self) -> pd.DataFrame:
         # squash entries with duplicate indices
         df = cast(pd.DataFrame, self.data)
         df = self.data.groupby(["num_evaluations"]).max()
