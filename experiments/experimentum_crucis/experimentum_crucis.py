@@ -53,6 +53,7 @@ def single_run(run_id: int):
         ),
         "cmaes",
         run_id,
+        every_n_calls=4,
     )
 
     cmaes = CMAES(

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Protocol, Sequence, cast
 
 import pandas as pd
+from loguru import logger
 
 from lib.metrics import Metric
 from lib.util import EvalCounter
@@ -18,8 +19,15 @@ class MetricsCollector:
     collect_method: str
     run_id: int
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
+    every_n_calls: int = 1
+    times_called: int = 0
 
     def __call__(self, state: HasCounter, identifier: str = ""):
+        self.times_called += 1
+        if self.times_called % self.every_n_calls != 0:
+            logger.error("Skipping metric collection")
+            return
+
         evals = state.counter.num_evaluations
 
         entry = {"num_evaluations": evals}
