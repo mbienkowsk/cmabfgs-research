@@ -25,7 +25,7 @@ class MetricsCollector:
     def __call__(self, state: HasCounter, identifier: str = ""):
         self.times_called += 1
         if self.times_called % self.every_n_calls != 0:
-            logger.error("Skipping metric collection")
+            logger.debug("Skipping metric collection")
             return
 
         evals = state.counter.num_evaluations
