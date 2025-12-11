@@ -24,9 +24,11 @@ if DEBUG:
     DIMENSIONS = 10
     NUM_RUNS = 10
     EXACT_RUN = None
+    EVERY_N_CALLS = 1
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
     NUM_RUNS = int(os.environ["N_RUNS"])
+    EVERY_N_CALLS = int(os.environ["EVERY_N_CALLS"])
 
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
@@ -53,7 +55,7 @@ def single_run(run_id: int):
         ),
         "cmaes",
         run_id,
-        every_n_calls=4,
+        every_n_calls=EVERY_N_CALLS,
     )
 
     cmaes = CMAES(

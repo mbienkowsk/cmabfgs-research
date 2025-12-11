@@ -12,10 +12,10 @@
 #SBATCH --chdir .
 
 # Read parameters for this array task
-read DIMENSIONS N_RUNS < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/experimentum_crucis/config.txt)
-export DIMENSIONS N_RUNS
+read DIMENSIONS N_RUNS EVERY_N_CALLS < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/experimentum_crucis/config.txt)
+export DIMENSIONS N_RUNS EVERY_N_CALLS
 
-echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS"
+echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS. Collecting $EVERY_N_CALLS"
 
 module load trytonp/python3/3.13.0
 
