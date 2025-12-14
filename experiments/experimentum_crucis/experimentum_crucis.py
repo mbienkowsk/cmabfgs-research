@@ -15,7 +15,7 @@ from lib.stopping import CMAESEarlyStopping
 from lib.util import EvalCounter, get_x0_and_seed_for_run_id
 
 LOG_LEVEL = "ERROR"
-DEBUG = os.getenv("DEBUG", True)
+DEBUG = os.getenv("DEBUG", False)
 logger.info(f"Debug set to {DEBUG}")
 BOUNDS = 100
 OBJECTIVE_NAME = "Elliptic"
