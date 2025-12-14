@@ -6,8 +6,10 @@ import pandas as pd
 
 from lib.funs import elliptic_hess_for_dim
 
+DIM = 100
+
 RESULT_PATH = (
-    Path(__file__).parent / "results" / "elliptic_d10" / "elliptic_d10.parquet"
+    Path(__file__).parent / "results" / f"elliptic_d{DIM}" / f"elliptic_d{DIM}.parquet"
 )
 
 
