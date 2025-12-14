@@ -41,7 +41,7 @@ class CMAES(Optimizer):
         seed: int,
         stopper: CMAESEarlyStopping,
         callback: "MetricsCollector",
-        bounds: tuple[int, int],
+        bounds: tuple[float, float],
         sigma: float = 1,
         repair_method: RepairMethod = RepairMethod.REFLECT,
         identifier: str = "",

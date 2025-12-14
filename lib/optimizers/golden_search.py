@@ -25,7 +25,7 @@ class GoldenSearch(Optimizer):
         direction: np.ndarray,
         fun: EvalCounter,
         callback: "MetricsCollector",
-        bounds: tuple[int, int] = (-100, 100),
+        bounds: tuple[float, float] = (-100, 100),
         identifier="",
     ):
         self.x0 = x

@@ -23,7 +23,7 @@ class GoldenCMAES(Optimizer):
         popsize: int,
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
-        bounds: tuple[int, int] = (-100, 100),
+        bounds: tuple[float, float] = (-100, 100),
         sigma: int = 1,
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations

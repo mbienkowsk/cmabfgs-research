@@ -25,7 +25,7 @@ class MultiCMALBFGSB(Optimizer):
         callback: "MetricsCollector",
         cmaes_stopper: CMAESEarlyStopping,
         maxevals: int,
-        bounds: tuple[int, int] = (-100, 100),
+        bounds: tuple[float, float] = (-100, 100),
         sigma: int = 1,
         restart_cmaes: bool = False,
     ):

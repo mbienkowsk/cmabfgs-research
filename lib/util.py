@@ -40,7 +40,7 @@ class EvalCounter:
     fun: Callable
     num_evaluations: int = field(default=0)
     best_solutions: list[float] = field(default_factory=list)
-    bounds: tuple[int, int] | None = None
+    bounds: tuple[float, float] | None = None
     identifier: str = ""
 
     def __call__(self, x):

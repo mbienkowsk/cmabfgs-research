@@ -40,7 +40,7 @@ class BFGS(Optimizer):
         fun: EvalCounter,
         callback: "MetricsCollector",
         stopper: BFGSEarlyStopping,
-        bounds: tuple[int, int],
+        bounds: tuple[float, float],
         identifier: str = "",
         hess_inv0: np.ndarray | None = None,
     ):
