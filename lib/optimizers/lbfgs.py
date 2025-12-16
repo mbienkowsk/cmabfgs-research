@@ -39,7 +39,7 @@ class L_BFGS_B(Optimizer):
         fun: EvalCounter,
         callback: "MetricsCollector",
         stopper: BFGSEarlyStopping,
-        bounds: tuple[int, int],
+        bounds: tuple[float, float],
         identifier: str = "",
     ):
         self.x0 = x0

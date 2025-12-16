@@ -1,8 +1,5 @@
 from enum import Enum
 
-import cecxx
-from opfunu.cec_based import cec2017
-
 
 class CECProvider(Enum):
     opfunu = "opfunu"
@@ -18,10 +15,14 @@ def get_cec2017_for_dim(idx: int, dim: int, provider: CECProvider = CECProvider.
         )
 
     if provider == CECProvider.cecxx:
+        import cecxx
+
         return cecxx.get_cec_function(
             cecxx.CECEdition.CEC2017, idx, dim, subtract_y_global=True
         )
     else:
+        from opfunu.cec_based import cec2017
+
         fname = f"F{idx}2017"
         fn = getattr(cec2017, fname)(dim)
         return fn.evaluate

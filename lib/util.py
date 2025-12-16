@@ -2,11 +2,12 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 
 import numpy as np
 import pandas as pd
 from loguru import logger
+from sympy import prime
 
 from lib.bound_handling import check_bounds
 
@@ -39,7 +40,7 @@ class EvalCounter:
     fun: Callable
     num_evaluations: int = field(default=0)
     best_solutions: list[float] = field(default_factory=list)
-    bounds: tuple[int, int] | None = None
+    bounds: tuple[float, float] | None = None
     identifier: str = ""
 
     def __call__(self, x):
@@ -117,3 +118,14 @@ def assert_all_non_increasing(
     data_containers: Iterable[pd.Series | pd.DataFrame], msg: str
 ):
     (assert_non_increasing(c, msg) for c in data_containers)
+
+
+def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):
+    """Boilerplate for setting up a random generator based on the run_id-th prime and returning a starting point for the given bounds and the prime (seed)"""
+    seed: int = prime(run_id)  # pyright: ignore[reportAssignmentType]
+    rng = np.random.default_rng(seed)
+    x = cast(
+        np.ndarray,  # pyright: ignore[reportArgumentType]
+        (rng.random(dimensions) - 0.5) * 2 * bounds,  # pyright: ignore[reportArgumentType]
+    )
+    return x, seed

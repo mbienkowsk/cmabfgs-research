@@ -11,7 +11,9 @@ class RepairMethod(Enum):
 class OutOfBoundsError(Exception): ...
 
 
-def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.ndarray:
+def repair_by_reflection(
+    individual: np.ndarray, bounds: tuple[float, float]
+) -> np.ndarray:
     low, high = bounds
     repaired = individual.copy()
 
@@ -36,7 +38,7 @@ def repair_by_reflection(individual: np.ndarray, bounds: tuple[int, int]) -> np.
 
 
 def check_bounds(
-    individual: np.ndarray, bounds: tuple[int, int], raise_exception: bool = True
+    individual: np.ndarray, bounds: tuple[float, float], raise_exception: bool = True
 ) -> bool:
     low, high = bounds
     good = bool(np.all((individual >= low) & (individual <= high)))

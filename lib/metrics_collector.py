@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Protocol, Sequence, cast
 
 import pandas as pd
+from loguru import logger
 
 from lib.metrics import Metric
 from lib.util import EvalCounter
@@ -18,16 +19,23 @@ class MetricsCollector:
     collect_method: str
     run_id: int
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
+    every_n_calls: int = 1
+    times_called: int = 0
 
     def __call__(self, state: HasCounter, identifier: str = ""):
+        self.times_called += 1
+        if self.times_called % self.every_n_calls != 0:
+            logger.debug("Skipping metric collection")
+            return
+
         evals = state.counter.num_evaluations
 
-        entry = {"num_evaluations": [evals]}
+        entry = {"num_evaluations": evals}
         for metric in self.metrics:
             key = f"{metric.key()}_{identifier}" if identifier else metric.key()
             entry[key] = metric.collect(state)  # pyright: ignore[reportArgumentType]
 
-        entry_df = pd.DataFrame(entry)
+        entry_df = pd.DataFrame([entry])
         if self.data.empty:
             self.data = entry_df
         else:
@@ -37,7 +45,7 @@ class MetricsCollector:
         if not (self.data >= 0).all().all():
             raise ValueError("MetricsCollector contains negative values.")
 
-    def as_dataframe(self):
+    def as_dataframe(self) -> pd.DataFrame:
         # squash entries with duplicate indices
         df = cast(pd.DataFrame, self.data)
         df = self.data.groupby(["num_evaluations"]).max()
