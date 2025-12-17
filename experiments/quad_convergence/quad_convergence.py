@@ -160,8 +160,7 @@ def main():
 
     concatenated_bfgs = pd.concat(bfgs_dfs)
     concatenated_bfgs.to_parquet(
-        RESULT_DIR
-        / f"bfgs_d{DIMENSIONS}_{'_'.join(map(str, COLLECT_AT_ITERATIONS))}.parquet",
+        RESULT_DIR / f"bfgs_d{DIMENSIONS}_.parquet",
         index=True,
         compression="brotli",
     )
