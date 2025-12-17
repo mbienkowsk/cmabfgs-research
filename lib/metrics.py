@@ -119,3 +119,12 @@ class CovarianceMatrixEigenvalueList(Metric):
     def collect_cmaes(self, state: CMAESState):
         eigenvalues, _ = np.linalg.eigh(state.covariance_matrix)
         return eigenvalues
+
+
+class CovarianceMatrix(Metric):
+    def key(self):
+        return "cov_mat"
+
+    def collect_cmaes(self, state: CMAESState):
+        # needs to be flattened to compress to parquet
+        return state.covariance_matrix.ravel()
