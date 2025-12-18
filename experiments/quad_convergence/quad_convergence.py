@@ -33,13 +33,14 @@ DEBUG = os.getenv("DEBUG", True)
 logger.info(f"Debug set to {DEBUG}")
 BOUNDS = 100
 OBJECTIVE_NAME = "Elliptic"
+KILL_OUTSIDE_BOUNDS = False
+BFGS_BOUNDS = (-100, 100) if KILL_OUTSIDE_BOUNDS else (-1e9, 1e9)
 
 if DEBUG:
     DIMENSIONS = 10
-    NUM_RUNS = 2
+    NUM_RUNS = 25
     EXACT_RUN = None
-    # COLLECT_AT_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
-    COLLECT_AT_ITERATIONS = [1, 2, 7, 19, 25, 50]
+    COLLECT_AT_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
 
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
@@ -55,7 +56,7 @@ def run_cmaes(run_id: int):
     objective = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
     counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
-    collector = MetricsCollector([CovarianceMatrix()], "cmaes", run_id)
+    collector = MetricsCollector([CovarianceMatrix(normalize=True)], "cmaes", run_id)
 
     cmaes = CMAES(
         counter,
@@ -110,6 +111,14 @@ def single_run(run_id: int):
             identifier=str(row["iteration"]),
         )
 
+    run_bfgs(
+        run_id,
+        x0=cmaes_df.attrs["x0"],
+        collector=collector,
+        hess_inv=np.eye(DIMENSIONS),
+        identifier="identity",
+    )
+
     return cmaes_df, collector.as_dataframe()
 
 
@@ -128,7 +137,7 @@ def run_bfgs(
         counter,
         collector,
         BFGSEarlyStopping(max_evals=MAXEVALS),
-        bounds=(-BOUNDS, BOUNDS),
+        bounds=BFGS_BOUNDS,
         identifier=identifier,
         hess_inv0=hess_inv,
     )
@@ -160,7 +169,7 @@ def main():
 
     concatenated_bfgs = pd.concat(bfgs_dfs)
     concatenated_bfgs.to_parquet(
-        RESULT_DIR / f"bfgs_d{DIMENSIONS}_.parquet",
+        RESULT_DIR / f"bfgs_d{DIMENSIONS}.parquet",
         index=True,
         compression="brotli",
     )

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -121,10 +122,16 @@ class CovarianceMatrixEigenvalueList(Metric):
         return eigenvalues
 
 
+@dataclass
 class CovarianceMatrix(Metric):
+    normalize: bool = False
+
     def key(self):
         return "cov_mat"
 
     def collect_cmaes(self, state: CMAESState):
         # needs to be flattened to compress to parquet
-        return state.covariance_matrix.ravel()
+        C = state.covariance_matrix.ravel()
+        if self.normalize:
+            return C / np.linalg.norm(C)
+        return C
