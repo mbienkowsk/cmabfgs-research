@@ -21,10 +21,11 @@ import pandas as pd
 from loguru import logger
 
 from lib.funs import get_function_by_name
-from lib.metrics import BestSoFar, CovarianceMatrix
+from lib.metrics import BestSoFar, BestXSoFar, CovarianceMatrix
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.cmaes import CMAES
+from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 from lib.util import EvalCounter, get_x0_and_seed_for_run_id
 
@@ -38,7 +39,7 @@ BFGS_BOUNDS = (-100, 100) if KILL_OUTSIDE_BOUNDS else (-1e9, 1e9)
 
 if DEBUG:
     DIMENSIONS = 10
-    NUM_RUNS = 25
+    NUM_RUNS = 10
     EXACT_RUN = None
     COLLECT_AT_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
 
@@ -50,13 +51,16 @@ else:
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 RESULT_DIR = Path(__file__).parent / "results" / f"d{DIMENSIONS}"
+X0_GENERATOR_SEED = 7
 
 
 def run_cmaes(run_id: int):
     objective = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
     counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
-    collector = MetricsCollector([CovarianceMatrix(normalize=True)], "cmaes", run_id)
+    collector = MetricsCollector(
+        [CovarianceMatrix(normalize=True), BestXSoFar()], "cmaes", run_id
+    )
 
     cmaes = CMAES(
         counter,
@@ -74,8 +78,6 @@ def run_cmaes(run_id: int):
     cmaes.optimize()
     logger.info(f"{run_id}: done")
     df = collector.as_dataframe()
-    # np.arrays are not json-serializable
-    df.attrs = {"x0": x.tolist()}
 
     return df
 
@@ -94,36 +96,66 @@ def correct_cov_mat(mat: np.ndarray):
 def single_run(run_id: int):
     cmaes_df = run_cmaes(run_id)
     cmaes_df["iteration"] = cmaes_df.index // POPULATION_SIZE
-    entries_of_interest = cmaes_df[cmaes_df["iteration"].isin(COLLECT_AT_ITERATIONS)]
-    collector = MetricsCollector(
-        [BestSoFar()],
-        "bfgs",
-        run_id,
+    num_x0s = len(COLLECT_AT_ITERATIONS)
+    rng = np.random.default_rng(X0_GENERATOR_SEED)
+    x0s = rng.uniform(low=-BOUNDS, high=BOUNDS, size=(num_x0s, DIMENSIONS)).reshape(
+        (num_x0s, DIMENSIONS)
     )
-    for _, row in entries_of_interest.iterrows():
-        hess_inv = correct_cov_mat(deflatten_cov_mat(row["cov_mat"]))
+    hess_invs = {
+        iters: correct_cov_mat(
+            deflatten_cov_mat(
+                cmaes_df[cmaes_df["iteration"] == iters].iloc[0]["cov_mat"]
+            )
+        )  # pyright: ignore[reportArgumentType]
+        for iters in filter(
+            lambda num: num < cmaes_df["iteration"].max(), COLLECT_AT_ITERATIONS
+        )
+    }
+    bfgs_results = [run_bfgs_variants_for_x0(run_id, x0, hess_invs) for x0 in x0s]
+    index_superset = np.unique(np.concatenate([df.index.values for df in bfgs_results]))  # pyright: ignore[reportCallIssue, reportArgumentType]
+    bfgs_df = (
+        pd.concat(
+            [
+                df.reindex(index_superset).interpolate(method="index")
+                for df in bfgs_results
+            ]
+        )
+        .groupby(level=0)
+        .mean()
+        .assign(run_id=run_id)
+    )
 
+    bfgs_raw_concat = pd.concat(bfgs_results)
+    bfgs_reindexed = bfgs_raw_concat.drop(columns=["run_id"]).set_index(
+        pd.MultiIndex.from_arrays(
+            [bfgs_raw_concat["run_id"], bfgs_raw_concat.index.to_numpy()]
+        )
+    )
+
+    return cmaes_df, bfgs_df, bfgs_reindexed
+
+
+def run_bfgs_variants_for_x0(
+    run_id: int, x0: np.ndarray, hess_invs: dict[int, np.ndarray]
+):
+    collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
+    for label, hess_inv in hess_invs.items():
         run_bfgs(
-            run_id,
-            x0=cmaes_df.attrs["x0"],
+            x0=x0,
             collector=collector,
             hess_inv=hess_inv,
-            identifier=str(row["iteration"]),
+            identifier=str(label),
         )
-
     run_bfgs(
-        run_id,
-        x0=cmaes_df.attrs["x0"],
+        x0=x0,
         collector=collector,
         hess_inv=np.eye(DIMENSIONS),
         identifier="identity",
     )
-
-    return cmaes_df, collector.as_dataframe()
+    return collector.as_dataframe()
 
 
 def run_bfgs(
-    run_id: int,
     x0: np.ndarray,
     collector: MetricsCollector,
     hess_inv: np.ndarray,
@@ -152,24 +184,34 @@ def main():
             else range(EXACT_RUN, EXACT_RUN + 1)
         )
         rv = pool.map(single_run, run_indices)
+    cmaes_dfs = [pair[0] for pair in rv]
+    bfgs_dfs = [pair[1] for pair in rv]
+    bfgs_raw_dfs = [pair[2] for pair in rv]
 
-    cmaes_dfs, bfgs_dfs = [pair[0] for pair in rv], [pair[1] for pair in rv]
-    # need to manually clear this since it errors out on cov_mat array comparison
-    for df in cmaes_dfs:
-        df.attrs = {}
+    cmaes_concatenated = pd.concat(cmaes_dfs)
+    new_idx = pd.MultiIndex.from_arrays(
+        [
+            cmaes_concatenated["run_id"],
+            cmaes_concatenated["iteration"],
+        ],
+        names=["run_id", "iteration"],
+    )
 
-    merged_attrs = {run_id: cmaes_dfs[run_id].attrs for run_id in range(len(cmaes_dfs))}
-    concatenated_cmaes = pd.concat(cmaes_dfs)
-    concatenated_cmaes.attrs = merged_attrs
-    concatenated_cmaes.to_parquet(
+    reindexed = cmaes_concatenated.drop(columns=["iteration", "run_id"]).set_index(
+        new_idx
+    )
+    reindexed.to_parquet(
         RESULT_DIR / f"cmaes_d{DIMENSIONS}.parquet",
         index=True,
         compression="brotli",
     )
 
-    concatenated_bfgs = pd.concat(bfgs_dfs)
-    concatenated_bfgs.to_parquet(
-        RESULT_DIR / f"bfgs_d{DIMENSIONS}.parquet",
+    aggregate_dataframes(bfgs_dfs).to_parquet(
+        RESULT_DIR / f"bfgs_d{DIMENSIONS}.parquet", index=True, compression="brotli"
+    )
+
+    pd.concat(bfgs_raw_dfs).to_parquet(
+        RESULT_DIR / f"bfgs_d{DIMENSIONS}_rawish.parquet",
         index=True,
         compression="brotli",
     )
