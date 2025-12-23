@@ -92,4 +92,4 @@ class L_BFGS_B(Optimizer):
     @property
     def y(self):
         """y of the optimization result"""
-        return self.state.counter.best_so_far
+        return self.state.counter.best_so_far[1]

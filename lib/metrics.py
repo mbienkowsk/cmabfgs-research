@@ -65,13 +65,13 @@ class BestSoFar(Metric):
         return "best"
 
     def collect_cmaes(self, state: CMAESState):
-        return state.counter.best_so_far - self.optimum
+        return state.counter.best_so_far[1] - self.optimum
 
     def collect_bfgs(self, state: BFGSState):
-        return state.counter.best_so_far - self.optimum
+        return state.counter.best_so_far[1] - self.optimum
 
     def collect_from_counter(self, counter: EvalCounter):
-        return counter.best_so_far - self.optimum
+        return counter.best_so_far[1] - self.optimum
 
 
 class CovarianceMatrixConditionNumber(Metric):
@@ -135,3 +135,11 @@ class CovarianceMatrix(Metric):
         if self.normalize:
             return C / np.linalg.norm(C)
         return C
+
+
+class BestXSoFar(Metric):
+    def key(self):
+        return "xbest"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.counter.best_so_far[0]
