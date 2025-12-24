@@ -5,7 +5,7 @@ import pandas as pd
 
 DIM = 10
 
-RESULT_PATH = Path(__file__).parent / "results" / f"d{DIM}" / f"bfgs_d{DIM}_raw.parquet"
+RESULT_PATH = Path(__file__).parent / "results" / f"d{DIM}" / f"bfgs_d{DIM}.parquet"
 
 
 def visualize_results(df: pd.DataFrame):

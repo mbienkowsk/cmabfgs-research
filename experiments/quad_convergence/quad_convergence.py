@@ -111,13 +111,20 @@ def single_run(run_id: int):
             lambda num: num < cmaes_df["iteration"].max(), COLLECT_AT_ITERATIONS
         )
     }
-    bfgs_results = [run_bfgs_variants_for_x0(run_id, x0, hess_invs) for x0 in x0s]
-    index_superset = np.unique(np.concatenate([df.index.values for df in bfgs_results]))  # pyright: ignore[reportCallIssue, reportArgumentType]
-    bfgs_df = (
+    bfgs_results_raw = [
+        run_bfgs_variants_for_x0(run_id, x0s[i], hess_invs).assign(x0_idx=i + 1)
+        for i in range(len(x0s))
+    ]
+    bfgs_index_superset = np.unique(
+        np.concatenate([df.index.values for df in bfgs_results_raw])  # pyright: ignore[reportCallIssue, reportArgumentType]
+    )
+    bfgs_df_agg = (
         pd.concat(
             [
-                df.reindex(index_superset).interpolate(method="index")
-                for df in bfgs_results
+                df.drop(columns="x0_idx")
+                .reindex(bfgs_index_superset)
+                .interpolate(method="index")
+                for df in bfgs_results_raw
             ]
         )
         .groupby(level=0)
@@ -125,14 +132,8 @@ def single_run(run_id: int):
         .assign(run_id=run_id)
     )
 
-    bfgs_raw_concat = pd.concat(bfgs_results)
-    bfgs_reindexed = bfgs_raw_concat.drop(columns=["run_id"]).set_index(
-        pd.MultiIndex.from_arrays(
-            [bfgs_raw_concat["run_id"], bfgs_raw_concat.index.to_numpy()]
-        )
-    )
-
-    return cmaes_df, bfgs_df, bfgs_reindexed
+    bfgs_raw_concat = pd.concat(bfgs_results_raw)
+    return cmaes_df, bfgs_df_agg, bfgs_raw_concat
 
 
 def run_bfgs_variants_for_x0(
@@ -210,8 +211,18 @@ def main():
         RESULT_DIR / f"bfgs_d{DIMENSIONS}.parquet", index=True, compression="brotli"
     )
 
-    pd.concat(bfgs_raw_dfs).to_parquet(
-        RESULT_DIR / f"bfgs_d{DIMENSIONS}_rawish.parquet",
+    bfgs_raw_concat = pd.concat(bfgs_raw_dfs)
+    bfgs_raw_concat.set_index(
+        pd.MultiIndex.from_arrays(
+            [
+                bfgs_raw_concat["run_id"],
+                bfgs_raw_concat["x0_idx"],
+                bfgs_raw_concat.index.values,
+            ],
+            names=["run_id", "x0_idx", "num_evaluations"],
+        )
+    ).to_parquet(
+        RESULT_DIR / f"bfgs_d{DIMENSIONS}_raw.parquet",
         index=True,
         compression="brotli",
     )
