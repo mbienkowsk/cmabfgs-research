@@ -108,16 +108,17 @@ def extract_objective_from_path(path: Path):
     raise ValueError(f"Could not extract objective from path: {path}")
 
 
-def assert_non_increasing(data_storage: pd.Series | pd.DataFrame, msg: str):
-    assert (data_storage.diff().iloc[1:] <= 0).all(), (
+def assert_non_increasing(data_storage: pd.Series | pd.DataFrame, msg: str = ""):
+    assert not (data_storage.diff() > 0).any().any(), (
         msg or "Series is not non-increasing"
     )
 
 
 def assert_all_non_increasing(
-    data_containers: Iterable[pd.Series | pd.DataFrame], msg: str
+    data_containers: Iterable[pd.Series | pd.DataFrame], msg: str = ""
 ):
-    (assert_non_increasing(c, msg) for c in data_containers)
+    for c in data_containers:
+        assert_non_increasing(c, msg)
 
 
 def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):

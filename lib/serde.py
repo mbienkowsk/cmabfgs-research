@@ -16,10 +16,15 @@ def load_results_from_directory(dir_path: Path):
     return aggregate_dataframes(dfs)
 
 
-def aggregate_dataframes(dfs: Iterable[pd.DataFrame]):
-    dfs = [df.drop(columns=["run_id"]) for df in dfs]
+def aggregate_dataframes(
+    dfs: Iterable[pd.DataFrame], drop_col: str = "run_id"
+) -> pd.DataFrame:
+    dfs = [df.drop(columns=[drop_col]) for df in dfs]
     common_index = np.unique(
         np.concatenate([df.index.values for df in dfs])  # pyright: ignore[reportCallIssue, reportArgumentType]
     )
-    aligned = [df.reindex(common_index).interpolate(method="index") for df in dfs]
-    return pd.concat(aligned).groupby(level=0).mean()
+    aligned = [
+        df.reindex(common_index).interpolate(method="index", limit_direction="both")
+        for df in dfs
+    ]
+    return pd.concat(aligned).groupby(level=0).mean()  # pyright: ignore[reportReturnType]

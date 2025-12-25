@@ -42,9 +42,22 @@ class Metric(ABC):
             return self.collect_from_counter(state.counter)
 
 
-class MeanEvaluation(Metric):
+class Mean(Metric):
     def key(self):
         return "mean"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.mean
+
+    def collect_cmabfgs(self, state: CMABFGSState):
+        if state.mode == "CMAES":
+            return self.collect_cmaes(state.cmaes_state)
+        return None
+
+
+class MeanEvaluation(Metric):
+    def key(self):
+        return "fmean"
 
     def collect_cmaes(self, state: CMAESState):
         return state.counter.without_counting(state.mean)
@@ -127,14 +140,12 @@ class CovarianceMatrix(Metric):
     normalize: bool = False
 
     def key(self):
-        return "cov_mat"
+        return "cov_mat" if not self.normalize else "cov_mat_normalized"
 
     def collect_cmaes(self, state: CMAESState):
-        # needs to be flattened to compress to parquet
-        C = state.covariance_matrix.ravel()
         if self.normalize:
-            return C / np.linalg.norm(C)
-        return C
+            return state.covariance_matrix / np.linalg.norm(state.covariance_matrix)
+        return state.covariance_matrix
 
 
 class BestXSoFar(Metric):

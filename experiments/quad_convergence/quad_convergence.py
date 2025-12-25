@@ -1,16 +1,3 @@
-# cmaes + occasional bfgs switching:
-# 1) from cmaes' x0 with h_inv = C
-# 2) from cmaes' xt with h_inv = C
-# 3) without preconditioning in these scenarios??
-# every n iterations, without subtracting to align
-
-
-# run_cmaes: ran 25 times, collects cov matrix, bestsofar and m
-# concat and save (with x0!)
-
-# run_bfgs - for each entry, run a bfgs from x0 with each C variant
-
-
 import multiprocessing as mp
 import os
 import sys
@@ -21,13 +8,18 @@ import pandas as pd
 from loguru import logger
 
 from lib.funs import get_function_by_name
-from lib.metrics import BestSoFar, BestXSoFar, CovarianceMatrix
+from lib.metrics import BestSoFar, BestXSoFar, CovarianceMatrix, Mean
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.cmaes import CMAES
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
-from lib.util import EvalCounter, get_x0_and_seed_for_run_id
+from lib.util import (
+    EvalCounter,
+    assert_all_non_increasing,
+    assert_non_increasing,
+    get_x0_and_seed_for_run_id,
+)
 
 LOG_LEVEL = "ERROR"
 DEBUG = os.getenv("DEBUG", True)
@@ -51,6 +43,8 @@ else:
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
 RESULT_DIR = Path(__file__).parent / "results" / f"d{DIMENSIONS}"
+AGG_DIR = RESULT_DIR / "agg"
+RAW_DIR = RESULT_DIR / "raw"
 X0_GENERATOR_SEED = 7
 
 
@@ -59,7 +53,13 @@ def run_cmaes(run_id: int):
     counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
     collector = MetricsCollector(
-        [CovarianceMatrix(normalize=True), BestXSoFar()], "cmaes", run_id
+        [
+            CovarianceMatrix(normalize=True),
+            BestXSoFar(),
+            Mean(),
+        ],
+        "cmaes",
+        run_id,
     )
 
     cmaes = CMAES(
@@ -79,81 +79,118 @@ def run_cmaes(run_id: int):
     logger.info(f"{run_id}: done")
     df = collector.as_dataframe()
 
-    return df
+    return df.assign(iteration=df.index // POPULATION_SIZE)
 
 
-def deflatten_cov_mat(arr: np.ndarray):
-    """To deserialize from parquet, cov matrices have to be deflattened"""
+def reconstruct_cov_mat(arr: np.ndarray):
+    # reshape
     num_elements = len(arr)
     root = np.sqrt(num_elements).astype(int)
-    return arr.reshape((root, root))
+    deflattened = arr.reshape((root, root))
+    return make_symmetrical(deflattened)
 
 
-def correct_cov_mat(mat: np.ndarray):
-    return mat * 1 / 2 + mat.T * 1 / 2
+def make_symmetrical(mat: np.ndarray):
+    return mat * 0.5 + mat.T * 0.5
 
 
-def single_run(run_id: int):
+def extract_rows_for_iterations(df: pd.DataFrame, iterations: list[int]):
+    return [df[df["iteration"] == iters].iloc[0] for iters in iterations]
+
+
+def single_run(
+    run_id: int,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Returns 5 dfs:
+    * cmaes run for this id with cov mat and mean info
+    * bfgs aggregated without inheriting x0
+    * raw concatenated bfgs without inheriting x0
+    * bfgs aggregated with inheriting x0
+    * raw concatenated bfgs with inheriting x0
+    """
     cmaes_df = run_cmaes(run_id)
-    cmaes_df["iteration"] = cmaes_df.index // POPULATION_SIZE
-    num_x0s = len(COLLECT_AT_ITERATIONS)
+    valid_iterations = [
+        i for i in COLLECT_AT_ITERATIONS if i < cmaes_df["iteration"].max()
+    ]
+    num_x0s = len(valid_iterations)
     rng = np.random.default_rng(X0_GENERATOR_SEED)
     x0s = rng.uniform(low=-BOUNDS, high=BOUNDS, size=(num_x0s, DIMENSIONS)).reshape(
         (num_x0s, DIMENSIONS)
     )
-    hess_invs = {
-        iters: correct_cov_mat(
-            deflatten_cov_mat(
-                cmaes_df[cmaes_df["iteration"] == iters].iloc[0]["cov_mat"]
+    return (
+        cmaes_df,  # pyright: ignore[reportReturnType]
+        *run_bfgs_with_predefined_x0s(run_id, cmaes_df, x0s),  # pyright: ignore[reportReturnType]
+        *run_bfgs_with_inherited_means(run_id, cmaes_df),
+    )
+
+
+def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray):
+    unique_by_iter = (
+        df[df["iteration"].isin(COLLECT_AT_ITERATIONS)]
+        .drop_duplicates(subset=["iteration"], keep="first")  # pyright: ignore[reportCallIssue]
+        .set_index("iteration")
+    )
+    subrun_dfs: list[pd.DataFrame] = []
+    for i in range(len(x0s)):
+        x0 = x0s[i]
+        collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
+        for iters, row in unique_by_iter.iterrows():
+            run_bfgs(
+                x0=x0,
+                collector=collector,
+                hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
+                identifier=f"{iters}_random_x0",
             )
-        )  # pyright: ignore[reportArgumentType]
-        for iters in filter(
-            lambda num: num < cmaes_df["iteration"].max(), COLLECT_AT_ITERATIONS
-        )
-    }
-    bfgs_results_raw = [
-        run_bfgs_variants_for_x0(run_id, x0s[i], hess_invs).assign(x0_idx=i + 1)
-        for i in range(len(x0s))
-    ]
-    bfgs_index_superset = np.unique(
-        np.concatenate([df.index.values for df in bfgs_results_raw])  # pyright: ignore[reportCallIssue, reportArgumentType]
-    )
-    bfgs_df_agg = (
-        pd.concat(
-            [
-                df.drop(columns="x0_idx")
-                .reindex(bfgs_index_superset)
-                .interpolate(method="index")
-                for df in bfgs_results_raw
-            ]
-        )
-        .groupby(level=0)
-        .mean()
-        .assign(run_id=run_id)
-    )
-
-    bfgs_raw_concat = pd.concat(bfgs_results_raw)
-    return cmaes_df, bfgs_df_agg, bfgs_raw_concat
-
-
-def run_bfgs_variants_for_x0(
-    run_id: int, x0: np.ndarray, hess_invs: dict[int, np.ndarray]
-):
-    collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
-    for label, hess_inv in hess_invs.items():
         run_bfgs(
             x0=x0,
             collector=collector,
-            hess_inv=hess_inv,
-            identifier=str(label),
+            hess_inv=np.eye(DIMENSIONS),
+            identifier="identity",
         )
-    run_bfgs(
-        x0=x0,
-        collector=collector,
-        hess_inv=np.eye(DIMENSIONS),
-        identifier="identity",
+        subrun_dfs.append(collector.as_dataframe().assign(subrun_id=i))
+
+    raw_result = pd.concat(subrun_dfs)
+    assert_all_non_increasing(subrun_dfs)
+    agg_result = aggregate_dataframes(subrun_dfs, "subrun_id")
+    try:
+        assert_non_increasing(agg_result)
+    except AssertionError:
+        print(agg_result)
+        print(agg_result.dtypes)
+        print(agg_result.diff())
+        agg_result.to_parquet("debug.parquet")
+    return agg_result, raw_result
+
+
+def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
+    unique_by_iter = (
+        df[df["iteration"].isin(COLLECT_AT_ITERATIONS)]
+        .drop_duplicates(subset=["iteration"], keep="first")  # pyright: ignore[reportCallIssue]
+        .set_index("iteration")
     )
-    return collector.as_dataframe()
+    subrun_dfs: list[pd.DataFrame] = []
+    for subrun_id in range(NUM_RUNS):
+        collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
+        for iters, row in unique_by_iter.iterrows():
+            run_bfgs(
+                x0=row["mean"],  # pyright: ignore[reportArgumentType]
+                collector=collector,
+                hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
+                identifier=f"{iters}_inherited_x0",
+            )
+        run_bfgs(
+            x0=row["mean"],  # pyright: ignore[reportArgumentType]
+            collector=collector,
+            hess_inv=np.eye(DIMENSIONS),
+            identifier="identity_inherited_x0",
+        )
+        subrun_dfs.append(collector.as_dataframe().assign(subrun_id=subrun_id))
+
+    raw_result = pd.concat(subrun_dfs)
+    assert_all_non_increasing(subrun_dfs)
+    agg_result = aggregate_dataframes(subrun_dfs, "subrun_id")
+    assert_non_increasing(agg_result)
+    return agg_result, raw_result
 
 
 def run_bfgs(
@@ -177,6 +214,36 @@ def run_bfgs(
     bfgs.optimize()
 
 
+def reindex_and_save_raw_data(dfs: list[pd.DataFrame], fname: str):
+    raw_concat = pd.concat(dfs)
+    reindexed = raw_concat.set_index(
+        pd.MultiIndex.from_arrays(
+            [
+                raw_concat["run_id"],
+                raw_concat["subrun_id"],
+                raw_concat.index.values,
+            ],
+            names=["run_id", "subrun_id", "num_evaluations"],
+        )
+    )
+    reindexed.to_parquet(
+        RAW_DIR / fname,
+        index=True,
+        compression="brotli",
+    )
+
+
+def aggregate_and_save_agg_data(dfs: list[pd.DataFrame], fname: str):
+    assert_all_non_increasing(dfs)
+    agg = aggregate_dataframes(dfs)
+    assert_non_increasing(agg)
+    agg.to_parquet(
+        AGG_DIR / fname,
+        index=True,
+        compression="brotli",
+    )
+
+
 def main():
     with mp.Pool(mp.cpu_count()) as pool:
         run_indices = (
@@ -186,9 +253,6 @@ def main():
         )
         rv = pool.map(single_run, run_indices)
     cmaes_dfs = [pair[0] for pair in rv]
-    bfgs_dfs = [pair[1] for pair in rv]
-    bfgs_raw_dfs = [pair[2] for pair in rv]
-
     cmaes_concatenated = pd.concat(cmaes_dfs)
     new_idx = pd.MultiIndex.from_arrays(
         [
@@ -201,31 +265,20 @@ def main():
     reindexed = cmaes_concatenated.drop(columns=["iteration", "run_id"]).set_index(
         new_idx
     )
+    # has to be flattened before compressing
+    reindexed["cov_mat"] = reindexed["cov_mat"].apply(np.ravel)
     reindexed.to_parquet(
-        RESULT_DIR / f"cmaes_d{DIMENSIONS}.parquet",
+        RAW_DIR / "cmaes.parquet",
         index=True,
         compression="brotli",
     )
 
-    aggregate_dataframes(bfgs_dfs).to_parquet(
-        RESULT_DIR / f"bfgs_d{DIMENSIONS}.parquet", index=True, compression="brotli"
-    )
-
-    bfgs_raw_concat = pd.concat(bfgs_raw_dfs)
-    bfgs_raw_concat.set_index(
-        pd.MultiIndex.from_arrays(
-            [
-                bfgs_raw_concat["run_id"],
-                bfgs_raw_concat["x0_idx"],
-                bfgs_raw_concat.index.values,
-            ],
-            names=["run_id", "x0_idx", "num_evaluations"],
-        )
-    ).to_parquet(
-        RESULT_DIR / f"bfgs_d{DIMENSIONS}_raw.parquet",
-        index=True,
-        compression="brotli",
-    )
+    # aggregated with predefined x0s
+    aggregate_and_save_agg_data([v[1] for v in rv], "bfgs.parquet")
+    # aggregated inheriting means
+    aggregate_and_save_agg_data([v[3] for v in rv], "bfgs_inherited_x0.parquet")
+    reindex_and_save_raw_data([v[2] for v in rv], "bfgs.parquet")
+    reindex_and_save_raw_data([v[4] for v in rv], "bfgs_inherited_x0.parquet")
 
 
 if __name__ == "__main__":
@@ -233,5 +286,7 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level=LOG_LEVEL)
 
     os.makedirs(RESULT_DIR, exist_ok=True)
+    os.makedirs(RAW_DIR, exist_ok=True)
+    os.makedirs(AGG_DIR, exist_ok=True)
 
     main()
