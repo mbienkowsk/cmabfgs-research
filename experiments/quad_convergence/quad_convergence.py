@@ -53,7 +53,7 @@ def run_cmaes(run_id: int):
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
     collector = MetricsCollector(
         [
-            CovarianceMatrix(normalize=True),
+            CovarianceMatrix(),
             BestXSoFar(),
             Mean(),
         ],
@@ -83,6 +83,10 @@ def run_cmaes(run_id: int):
 
 def make_symmetrical(mat: np.ndarray):
     return mat * 0.5 + mat.T * 0.5
+
+
+def normalize(mat: np.ndarray):
+    return mat / np.linalg.norm(mat)
 
 
 def single_run(
@@ -121,6 +125,12 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
                 hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
                 identifier=f"{iters}_random_x0",
             )
+            run_bfgs(
+                x0=x0,
+                collector=collector,
+                hess_inv=make_symmetrical(normalize(row["cov_mat"])),  # pyright: ignore[reportArgumentType]
+                identifier=f"{iters}_inherited_x0_normalized",
+            )
         run_bfgs(
             x0=x0,
             collector=collector,
@@ -153,6 +163,12 @@ def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
                 collector=collector,
                 hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
                 identifier=f"{iters}_inherited_x0",
+            )
+            run_bfgs(
+                x0=row["mean"],  # pyright: ignore[reportArgumentType]
+                collector=collector,
+                hess_inv=make_symmetrical(normalize(row["cov_mat"])),  # pyright: ignore[reportArgumentType]
+                identifier=f"{iters}_inherited_x0_normalized",
             )
         run_bfgs(
             x0=row["mean"],  # pyright: ignore[reportArgumentType]

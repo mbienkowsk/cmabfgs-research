@@ -138,14 +138,10 @@ class CovarianceMatrixEigenvalueList(Metric):
 
 @dataclass
 class CovarianceMatrix(Metric):
-    normalize: bool = False
-
     def key(self):
         return "cov_mat"
 
     def collect_cmaes(self, state: CMAESState):
-        if self.normalize:
-            return state.covariance_matrix / np.linalg.norm(state.covariance_matrix)
         return deepcopy(state.covariance_matrix)
 
 
