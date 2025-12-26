@@ -16,7 +16,6 @@ class HasCounter(Protocol):
 @dataclass
 class MetricsCollector:
     metrics: Sequence[Metric]
-    collect_method: str
     run_id: int
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
     every_n_calls: int = 1
@@ -40,10 +39,6 @@ class MetricsCollector:
             self.data = entry_df
         else:
             self.data = pd.concat([self.data, entry_df])
-
-    def validate(self):
-        if not (self.data >= 0).all().all():
-            raise ValueError("MetricsCollector contains negative values.")
 
     def as_dataframe(self) -> pd.DataFrame:
         # squash entries with duplicate indices

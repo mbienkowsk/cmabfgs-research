@@ -58,7 +58,6 @@ def run_cmaes(run_id: int):
             BestXSoFar(),
             Mean(),
         ],
-        "cmaes",
         run_id,
     )
 
@@ -82,20 +81,8 @@ def run_cmaes(run_id: int):
     return df.assign(iteration=df.index // POPULATION_SIZE)
 
 
-def reconstruct_cov_mat(arr: np.ndarray):
-    # reshape
-    num_elements = len(arr)
-    root = np.sqrt(num_elements).astype(int)
-    deflattened = arr.reshape((root, root))
-    return make_symmetrical(deflattened)
-
-
 def make_symmetrical(mat: np.ndarray):
     return mat * 0.5 + mat.T * 0.5
-
-
-def extract_rows_for_iterations(df: pd.DataFrame, iterations: list[int]):
-    return [df[df["iteration"] == iters].iloc[0] for iters in iterations]
 
 
 def single_run(
@@ -133,7 +120,7 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
     subrun_dfs: list[pd.DataFrame] = []
     for i in range(len(x0s)):
         x0 = x0s[i]
-        collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
+        collector = MetricsCollector([BestSoFar()], run_id)
         for iters, row in unique_by_iter.iterrows():
             run_bfgs(
                 x0=x0,
@@ -170,7 +157,7 @@ def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
     )
     subrun_dfs: list[pd.DataFrame] = []
     for subrun_id in range(NUM_RUNS):
-        collector = MetricsCollector([BestSoFar()], "bfgs", run_id)
+        collector = MetricsCollector([BestSoFar()], run_id)
         for iters, row in unique_by_iter.iterrows():
             run_bfgs(
                 x0=row["mean"],  # pyright: ignore[reportArgumentType]

@@ -58,11 +58,6 @@ class CMAES(Optimizer):
         self.identifier = identifier
 
     @property
-    def raw_objective(self):
-        """Unwrap the objective function from the EvalCounter."""
-        return self.state.counter.fun
-
-    @property
     def wrapped_objective(self):
         return self.state.counter
 

@@ -85,7 +85,7 @@ def average_interpolated_values(values, evals, maxevals):
 def run_vanilla(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "cmaes")
+    callback = MetricsCollector(metrics)
     stopper = CMAESEarlyStopping(max_evals=MAXEVALS, tolfun=1e-9)
     cmaes = CMAES(
         mean=x,
@@ -106,7 +106,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
 def run_bfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "bfgs")
+    callback = MetricsCollector(metrics)
     bfgs = BFGS(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()
     callback.export_to_csv(
@@ -118,7 +118,7 @@ def run_bfgs(x: np.ndarray, seed: int, idx: int):
 def run_lbfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "bfgs")
+    callback = MetricsCollector(metrics)
     bfgs = L_BFGS_B(x, seed=seed, fun=counter, callback=callback)
     bfgs.optimize()
     callback.export_to_csv(
@@ -130,7 +130,7 @@ def run_lbfgs(x: np.ndarray, seed: int, idx: int):
 def run_cmabfgs(x: np.ndarray, seed: int, idx: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "cmabfgs")
+    callback = MetricsCollector(metrics)
     cmabfgs = CMABFGS(
         x,
         seed=seed,
@@ -146,7 +146,6 @@ def run_cmabfgs(x: np.ndarray, seed: int, idx: int):
 
 def visualize_results(result_path: Path):
     fig = plt.figure()
-    postscripts = ["vanilla", "bfgs", "lbfgs", "cmabfgs"]
 
     label_to_dirs = {
         "vanilla CMA-ES": result_path / "vanilla",

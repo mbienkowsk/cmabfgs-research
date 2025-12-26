@@ -43,7 +43,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
     metrics = [
         BestSoFar(OPTIMUM),
     ]
-    callback = MetricsCollector(metrics, "cmaes")
+    callback = MetricsCollector(metrics)
     stopper = CMAESEarlyStopping(max_evals=MAXEVALS, tolfun=1e-9)
     cmaes = CMAES(
         mean=x,
@@ -62,7 +62,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
 def run_cmabfgs(x: np.ndarray, seed: int, idx: int, switch_after_objective_calls: int):
     counter = EvalCounter(OBJECTIVE)
     metrics = [BestSoFar(OPTIMUM)]
-    callback = MetricsCollector(metrics, "cmabfgs")
+    callback = MetricsCollector(metrics)
     cmabfgs = CMABFGS(
         x,
         seed=seed,

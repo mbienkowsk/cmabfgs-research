@@ -16,7 +16,6 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
-from lib.optimizers.hybrids.goldencmaes import GoldenCMAES
 from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
@@ -61,18 +60,11 @@ def run_multi_hybrid(
     seed: int,
     idx: int,
 ):
-    class_to_collection_method = {
-        MultiCMABFGS: "cmabfgs",
-        MultiCMALBFGSB: "cmabfgs",
-        GoldenCMAES: "goldencmaes",
-    }
-    collection_method = class_to_collection_method[klass]
-
     counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))
     metrics = [
         BestSoFar(),
     ]
-    callback = MetricsCollector(metrics, collection_method, idx)
+    callback = MetricsCollector(metrics, idx)
     optimizer = klass(
         x,
         SWITCH_AFTER_ITERATIONS,
@@ -97,7 +89,7 @@ def run_bfgs(
 ):
     counter = EvalCounter(objective)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "bfgs", idx)
+    callback = MetricsCollector(metrics, idx)
     bfgs = BFGS(
         x,
         fun=counter,
@@ -119,7 +111,7 @@ def run_l_bfgs_b(
 ):
     counter = EvalCounter(objective)
     metrics = [BestSoFar()]
-    callback = MetricsCollector(metrics, "bfgs", idx)
+    callback = MetricsCollector(metrics, idx)
     l_bfgs_b = L_BFGS_B(
         x,
         fun=counter,

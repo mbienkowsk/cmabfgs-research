@@ -14,7 +14,6 @@ class StopReason(Enum):
     NOT_GIVEN = auto()
     MAXEVALS = auto()
     TOLFUN = auto()
-    TOLHIST = auto()
 
 
 class HasNumEvals(Protocol):

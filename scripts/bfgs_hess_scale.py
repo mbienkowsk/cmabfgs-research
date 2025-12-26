@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print(f"inv_hess norm: {np.linalg.norm(inv_hess)}")
 
     metrics = (BestSoFar(),)
-    callback = MetricsCollector(deepcopy(metrics), "bfgs", RUN_ID)
+    callback = MetricsCollector(deepcopy(metrics), RUN_ID)
 
     for factor in SCALING_FACTORS:
         BFGS(
