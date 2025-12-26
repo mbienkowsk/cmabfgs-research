@@ -28,17 +28,16 @@ BOUNDS = 100
 OBJECTIVE_NAME = "Elliptic"
 KILL_OUTSIDE_BOUNDS = False
 BFGS_BOUNDS = (-100, 100) if KILL_OUTSIDE_BOUNDS else (-1e9, 1e9)
+CMAES_COLLECTION_INTERVAL = 20
 
 if DEBUG:
     DIMENSIONS = 10
     NUM_RUNS = 10
     EXACT_RUN = None
-    COLLECT_AT_ITERATIONS = [1, 2, 7, 19, 25, 50, 100, 187, 250, 500, 750]
 
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
     NUM_RUNS = int(os.environ["N_RUNS"])
-    COLLECT_AT_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
 
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
@@ -59,6 +58,7 @@ def run_cmaes(run_id: int):
             Mean(),
         ],
         run_id,
+        every_n_calls=CMAES_COLLECTION_INTERVAL,
     )
 
     cmaes = CMAES(
@@ -96,10 +96,7 @@ def single_run(
     * raw concatenated bfgs with inheriting x0
     """
     cmaes_df = run_cmaes(run_id)
-    valid_iterations = [
-        i for i in COLLECT_AT_ITERATIONS if i < cmaes_df["iteration"].max()
-    ]
-    num_x0s = len(valid_iterations)
+    num_x0s = len(cmaes_df)
     rng = np.random.default_rng(X0_GENERATOR_SEED)
     x0s = rng.uniform(low=-BOUNDS, high=BOUNDS, size=(num_x0s, DIMENSIONS)).reshape(
         (num_x0s, DIMENSIONS)
@@ -112,16 +109,12 @@ def single_run(
 
 
 def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray):
-    unique_by_iter = (
-        df[df["iteration"].isin(COLLECT_AT_ITERATIONS)]
-        .drop_duplicates(subset=["iteration"], keep="first")  # pyright: ignore[reportCallIssue]
-        .set_index("iteration")
-    )
+    by_iter = df.set_index("iteration")
     subrun_dfs: list[pd.DataFrame] = []
     for i in range(len(x0s)):
         x0 = x0s[i]
         collector = MetricsCollector([BestSoFar()], run_id)
-        for iters, row in unique_by_iter.iterrows():
+        for iters, row in by_iter.iterrows():
             run_bfgs(
                 x0=x0,
                 collector=collector,
@@ -150,15 +143,11 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
 
 
 def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
-    unique_by_iter = (
-        df[df["iteration"].isin(COLLECT_AT_ITERATIONS)]
-        .drop_duplicates(subset=["iteration"], keep="first")  # pyright: ignore[reportCallIssue]
-        .set_index("iteration")
-    )
+    by_iter = df.set_index("iteration")
     subrun_dfs: list[pd.DataFrame] = []
     for subrun_id in range(NUM_RUNS):
         collector = MetricsCollector([BestSoFar()], run_id)
-        for iters, row in unique_by_iter.iterrows():
+        for iters, row in by_iter.iterrows():
             run_bfgs(
                 x0=row["mean"],  # pyright: ignore[reportArgumentType]
                 collector=collector,
