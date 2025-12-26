@@ -37,7 +37,7 @@ class CMABFGS(Optimizer):
         self.seed = seed
         self.n_cmaes_iterations = n_cmaes_iterations
         self.callback = callback
-        cmaes_state = CMAESState(fun, self.cma._C)
+        cmaes_state = CMAESState(fun, self.cma._C, popsize)
         bfgs_state = BFGSState(fun)
         self.state = CMABFGSState("CMAES", cmaes_state, bfgs_state, fun)
 

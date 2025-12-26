@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -47,7 +48,7 @@ class Mean(Metric):
         return "mean"
 
     def collect_cmaes(self, state: CMAESState):
-        return state.mean
+        return deepcopy(state.mean)
 
     def collect_cmabfgs(self, state: CMABFGSState):
         if state.mode == "CMAES":
@@ -140,12 +141,12 @@ class CovarianceMatrix(Metric):
     normalize: bool = False
 
     def key(self):
-        return "cov_mat" if not self.normalize else "cov_mat_normalized"
+        return "cov_mat"
 
     def collect_cmaes(self, state: CMAESState):
         if self.normalize:
             return state.covariance_matrix / np.linalg.norm(state.covariance_matrix)
-        return state.covariance_matrix
+        return deepcopy(state.covariance_matrix)
 
 
 class BestXSoFar(Metric):
