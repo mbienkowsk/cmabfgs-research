@@ -1,13 +1,14 @@
 import multiprocessing as mp
 import os
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from loguru import logger
 
-from lib.funs import get_function_by_name
+from lib.funs import elliptic_hess_for_dim, get_function_by_name
 from lib.metrics import BestSoFar, BestXSoFar, CovarianceMatrix, Mean
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
@@ -46,6 +47,8 @@ RESULT_DIR = Path(__file__).parent / "results" / f"d{DIMENSIONS}"
 AGG_DIR = RESULT_DIR / "agg"
 RAW_DIR = RESULT_DIR / "raw"
 X0_GENERATOR_SEED = 7
+
+GROUND_TRUTH_INV_HESS = np.invert(elliptic_hess_for_dim(DIMENSIONS))
 
 
 def run_cmaes(run_id: int):
@@ -138,6 +141,12 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
             hess_inv=np.eye(DIMENSIONS),
             identifier="identity",
         )
+        run_bfgs(
+            x0=x0,
+            collector=collector,
+            hess_inv=deepcopy(GROUND_TRUTH_INV_HESS),
+            identifier="identity",
+        )
         subrun_dfs.append(collector.as_dataframe().assign(subrun_id=i))
 
     raw_result = pd.concat(subrun_dfs)
@@ -176,6 +185,13 @@ def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
             collector=collector,
             hess_inv=np.eye(DIMENSIONS),
             identifier="identity_inherited_x0",
+        )
+        run_bfgs(
+            x0=row["mean"],  # pyright: ignore[reportArgumentType]
+            collector=collector,
+            # TODO: scale down?
+            hess_inv=deepcopy(GROUND_TRUTH_INV_HESS),
+            identifier="identity",
         )
         subrun_dfs.append(collector.as_dataframe().assign(subrun_id=subrun_id))
 
