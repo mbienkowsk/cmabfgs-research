@@ -104,14 +104,23 @@ def single_run(
     * raw concatenated bfgs with inheriting x0
     """
     cmaes_df = run_cmaes(run_id)
+    return (
+        cmaes_df,
+        *run_all_bfgs_from_cmaes_df(run_id, cmaes_df),
+    )
+
+
+def run_all_bfgs_from_cmaes_df(
+    run_id: int,
+    cmaes_df: pd.DataFrame,
+):
     num_x0s = len(cmaes_df)
     rng = np.random.default_rng(X0_GENERATOR_SEED)
     x0s = rng.uniform(low=-BOUNDS, high=BOUNDS, size=(num_x0s, DIMENSIONS)).reshape(
         (num_x0s, DIMENSIONS)
     )
     return (
-        cmaes_df,  # pyright: ignore[reportReturnType]
-        *run_bfgs_with_predefined_x0s(run_id, cmaes_df, x0s),  # pyright: ignore[reportReturnType]
+        *run_bfgs_with_predefined_x0s(run_id, cmaes_df, x0s),
         *run_bfgs_with_inherited_means(run_id, cmaes_df),
     )
 
