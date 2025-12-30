@@ -32,7 +32,7 @@ BFGS_BOUNDS = (-100, 100) if KILL_OUTSIDE_BOUNDS else (-1e9, 1e9)
 
 if DEBUG:
     DIMENSIONS = 10
-    NUM_RUNS = 10
+    NUM_RUNS = 3
     EXACT_RUN = None
     CMAES_COLLECTION_INTERVAL = 20
 
@@ -48,7 +48,22 @@ AGG_DIR = RESULT_DIR / "agg"
 RAW_DIR = RESULT_DIR / "raw"
 X0_GENERATOR_SEED = 7
 
-GROUND_TRUTH_INV_HESS = np.invert(elliptic_hess_for_dim(DIMENSIONS))
+hess = elliptic_hess_for_dim(DIMENSIONS)
+GROUND_TRUTH_INV_HESS = np.linalg.inv(hess)
+
+
+def try_load_and_split_cmaes_df_from_disk(dim: int):
+    file = RAW_DIR / "cmaes.parquet"
+    if not file.exists():
+        print("No cmaes data on disk")
+        return None
+    df = pd.read_parquet(file)
+    print("Read cmaes data from disk")
+    reindexed = df.reset_index("iteration")
+    reindexed["cov_mat"] = reindexed["cov_mat"].apply(
+        lambda arr: np.reshape(arr, (dim, dim))
+    )
+    return [subdf for _, subdf in reindexed.groupby(level="run_id")]
 
 
 def run_cmaes(run_id: int):
@@ -94,7 +109,7 @@ def normalize_to_dim(mat: np.ndarray, dim: int):
 
 
 def single_run(
-    run_id: int,
+    run_id: int, cmaes_df: pd.DataFrame | None = None
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Returns 5 dfs:
     * cmaes run for this id with cov mat and mean info
@@ -103,7 +118,9 @@ def single_run(
     * bfgs aggregated with inheriting x0
     * raw concatenated bfgs with inheriting x0
     """
-    cmaes_df = run_cmaes(run_id)
+    if cmaes_df is None:
+        # run cmaes if no data is provided
+        cmaes_df = run_cmaes(run_id)
     return (
         cmaes_df,
         *run_all_bfgs_from_cmaes_df(run_id, cmaes_df),
@@ -270,28 +287,38 @@ def main():
             if not DEBUG or EXACT_RUN is None
             else range(EXACT_RUN, EXACT_RUN + 1)
         )
-        rv = pool.map(single_run, run_indices)
-    cmaes_dfs = [pair[0] for pair in rv]
-    cmaes_concatenated = pd.concat(cmaes_dfs)
-    new_idx = pd.MultiIndex.from_arrays(
-        [
-            cmaes_concatenated["run_id"],
-            cmaes_concatenated["iteration"],
-        ],
-        names=["run_id", "iteration"],
-    )
+        cmaes_dfs = try_load_and_split_cmaes_df_from_disk(DIMENSIONS)
+        args_per_run = (
+            zip(run_indices, cmaes_dfs)
+            if cmaes_dfs is not None
+            else [(run_idx, None) for run_idx in run_indices]
+        )
+        rv = pool.starmap(single_run, args_per_run)
 
-    reindexed = cmaes_concatenated.drop(columns=["iteration", "run_id"]).set_index(
-        new_idx
-    )
-    # has to be flattened before compressing
-    reindexed["cov_mat"] = reindexed["cov_mat"].apply(np.ravel)
-    reindexed.to_parquet(
-        RAW_DIR / "cmaes.parquet",
-        index=True,
-        compression="brotli",
-    )
+    if cmaes_dfs is None:
+        # new cmaes results, aggregate and save
+        cmaes_dfs = [pair[0] for pair in rv]
+        cmaes_concatenated = pd.concat(cmaes_dfs)
+        new_idx = pd.MultiIndex.from_arrays(
+            [
+                cmaes_concatenated["run_id"],
+                cmaes_concatenated["iteration"],
+            ],
+            names=["run_id", "iteration"],
+        )
 
+        reindexed = cmaes_concatenated.drop(columns=["iteration", "run_id"]).set_index(
+            new_idx
+        )
+        # has to be flattened before compressing
+        reindexed["cov_mat"] = reindexed["cov_mat"].apply(np.ravel)
+        reindexed.to_parquet(
+            RAW_DIR / "cmaes.parquet",
+            index=True,
+            compression="brotli",
+        )
+
+    # save bfgs data
     # aggregated with predefined x0s
     aggregate_and_save_agg_data([v[1] for v in rv], "bfgs.parquet")
     # aggregated inheriting means
