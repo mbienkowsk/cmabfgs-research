@@ -26,19 +26,18 @@ def get_eigv_ratio_statistics(arr: np.ndarray):
 
 @contextmanager
 def wrap_plot(title: str, dim: int, ylabel: str, save_to: Path):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(16, 9))
     secax = ax.secondary_xaxis(
         "bottom",
         functions=(lambda x: x / (4 * dim), lambda x: x * 4 * dim),  # pyright: ignore[reportOperatorIssue]
     )
-    secax.set_xlabel("Secondary scale")
     secax.spines["bottom"].set_position(("outward", 40))
     yield
     plt.xlabel("liczba ewaluacji f.celu")
     secax.set_xlabel("Liczba iteracji algorytmu")
     plt.title(title + f" ({dim} wymiarów)")
     plt.grid()
-    plt.savefig(save_to)
+    plt.savefig(save_to, dpi=300, bbox_inches="tight")
 
 
 def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
