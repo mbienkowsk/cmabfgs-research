@@ -89,8 +89,8 @@ def make_symmetrical(mat: np.ndarray):
     return mat * 0.5 + mat.T * 0.5
 
 
-def normalize(mat: np.ndarray):
-    return mat / np.linalg.norm(mat)
+def normalize_to_dim(mat: np.ndarray, dim: int):
+    return mat / np.linalg.norm(mat) * dim
 
 
 def single_run(
@@ -116,6 +116,26 @@ def single_run(
     )
 
 
+def run_normalized_and_non_normalized_bfgs(
+    x0: np.ndarray,
+    collector: MetricsCollector,
+    hess_inv: np.ndarray,
+    identifier_base: str,
+):
+    run_bfgs(
+        x0,
+        collector,
+        make_symmetrical(hess_inv),
+        identifier_base,
+    )
+    run_bfgs(
+        x0,
+        collector,
+        make_symmetrical(normalize_to_dim(hess_inv, DIMENSIONS)),
+        f"{identifier_base}_normalized",
+    )
+
+
 def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray):
     by_iter = df.set_index("iteration")
     subrun_dfs: list[pd.DataFrame] = []
@@ -123,42 +143,30 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
         x0 = x0s[i]
         collector = MetricsCollector([BestSoFar()], run_id)
         for iters, row in by_iter.iterrows():
-            run_bfgs(
+            run_normalized_and_non_normalized_bfgs(
                 x0=x0,
                 collector=collector,
-                hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
-                identifier=f"{iters}_random_x0",
+                hess_inv=row["cov_mat"],  # pyright: ignore[reportArgumentType]
+                identifier_base=str(iters),
             )
-            run_bfgs(
-                x0=x0,
-                collector=collector,
-                hess_inv=make_symmetrical(normalize(row["cov_mat"])),  # pyright: ignore[reportArgumentType]
-                identifier=f"{iters}_random_x0_normalized",
-            )
-        run_bfgs(
+        run_normalized_and_non_normalized_bfgs(
             x0=x0,
             collector=collector,
             hess_inv=np.eye(DIMENSIONS),
-            identifier="identity",
+            identifier_base="identity",
         )
-        run_bfgs(
+        run_normalized_and_non_normalized_bfgs(
             x0=x0,
             collector=collector,
             hess_inv=deepcopy(GROUND_TRUTH_INV_HESS),
-            identifier="identity",
+            identifier_base="gt_inv_hess",
         )
         subrun_dfs.append(collector.as_dataframe().assign(subrun_id=i))
 
     raw_result = pd.concat(subrun_dfs)
     assert_all_non_increasing(subrun_dfs)
     agg_result = aggregate_dataframes(subrun_dfs, "subrun_id")
-    try:
-        assert_non_increasing(agg_result)
-    except AssertionError:
-        print(agg_result)
-        print(agg_result.dtypes)
-        print(agg_result.diff())
-        agg_result.to_parquet("debug.parquet")
+    assert_non_increasing(agg_result)
     return agg_result, raw_result
 
 
@@ -168,31 +176,24 @@ def run_bfgs_with_inherited_means(run_id: int, df: pd.DataFrame):
     for subrun_id in range(NUM_RUNS):
         collector = MetricsCollector([BestSoFar()], run_id)
         for iters, row in by_iter.iterrows():
-            run_bfgs(
+            run_normalized_and_non_normalized_bfgs(
                 x0=row["mean"],  # pyright: ignore[reportArgumentType]
                 collector=collector,
-                hess_inv=make_symmetrical(row["cov_mat"]),  # pyright: ignore[reportArgumentType]
-                identifier=f"{iters}_inherited_x0",
+                hess_inv=row["cov_mat"],  # pyright: ignore[reportArgumentType]
+                identifier_base=str(iters),
             )
-            run_bfgs(
+            run_normalized_and_non_normalized_bfgs(
                 x0=row["mean"],  # pyright: ignore[reportArgumentType]
                 collector=collector,
-                hess_inv=make_symmetrical(normalize(row["cov_mat"])),  # pyright: ignore[reportArgumentType]
-                identifier=f"{iters}_inherited_x0_normalized",
+                hess_inv=np.eye(DIMENSIONS),
+                identifier_base=f"{iters}_identity",
             )
-        run_bfgs(
-            x0=row["mean"],  # pyright: ignore[reportArgumentType]
-            collector=collector,
-            hess_inv=np.eye(DIMENSIONS),
-            identifier="identity_inherited_x0",
-        )
-        run_bfgs(
-            x0=row["mean"],  # pyright: ignore[reportArgumentType]
-            collector=collector,
-            # TODO: scale down?
-            hess_inv=deepcopy(GROUND_TRUTH_INV_HESS),
-            identifier="identity",
-        )
+            run_normalized_and_non_normalized_bfgs(
+                x0=row["mean"],  # pyright: ignore[reportArgumentType]
+                collector=collector,
+                hess_inv=deepcopy(GROUND_TRUTH_INV_HESS),
+                identifier_base=f"{iters}_gt_inv_hess",
+            )
         subrun_dfs.append(collector.as_dataframe().assign(subrun_id=subrun_id))
 
     raw_result = pd.concat(subrun_dfs)
