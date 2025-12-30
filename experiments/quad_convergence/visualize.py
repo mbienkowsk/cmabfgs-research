@@ -1,28 +1,92 @@
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-DIM = 10
+DIM = 100
 RESULT_PATH = Path(__file__).parent / "results" / f"d{DIM}" / "agg"
 
+NUM_CURVES_TO_DISPLAY = 8
 
-def visualize_results(df: pd.DataFrame):
-    normalized_cols = [col for col in df.columns if "normalized" in col]
-    df.loc[:400].plot(
-        y=[col for col in df.columns if col not in normalized_cols],
+
+def get_plot_directory(dim: int):
+    return Path(__file__).parent / "results" / "plots" / f"d_{dim}"
+
+
+def get_result_directory(dim: int):
+    return Path(__file__).parent / "results" / f"d{dim}" / "agg"
+
+
+def short_label(col: str) -> str:
+    m = re.match(r"(best_\d+)", col)
+    if not m:
+        return col
+    label = m.group(1)
+    if "normalized" in col:
+        label += "_norm"
+    return label
+
+
+def trim_constant_tail(s: pd.Series) -> pd.Series:
+    v = s.values
+    # find last index where value changes
+    idx = (v != v[-1]).nonzero()[0]
+    if len(idx) == 0:
+        return s.iloc[:1]
+    return s.iloc[: idx[-1] + 2]
+
+
+def visualize_results(df: pd.DataFrame, save_dir: Path):
+    fig, ax = plt.subplots(figsize=(16, 9))
+    df = pd.concat(
+        {c: trim_constant_tail(df[c]) for c in df.columns},
+        axis=1,
+    )
+    num_cols = df.shape[1]
+    every_nth = max(1, num_cols // NUM_CURVES_TO_DISPLAY)
+    normalized_cols = [col for col in df.columns if "normalized" in col][
+        :: every_nth // 2
+    ]
+    raw_cols = [col for col in df.columns if "normalized" not in col][:: every_nth // 2]
+
+    df.plot(
+        ax=ax,
+        y=raw_cols,
         title="BFGS inicjowany macierzą kowariancji CMAESa po n iteracjach - porównanie krzywych zbieżności",
         logy=True,
     )
-    df.loc[:400].plot(
+    plt.legend([short_label(col) for col in raw_cols])
+    plt.grid()
+    plt.savefig(save_dir / "non_normalized.png", dpi=300, bbox_inches="tight")
+
+    fig, ax = plt.subplots(figsize=(16, 9))
+    df.plot(
+        ax=ax,
         y=normalized_cols,
         title="BFGS inicjowany znormalizowaną macierzą kowariancji CMAESa po n iteracjach - porównanie krzywych zbieżności",
         logy=True,
     )
-    plt.legend()
-    plt.show()
+    plt.legend([short_label(col) for col in normalized_cols])
+    plt.grid()
+    plt.savefig(save_dir / "normalized.png", dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
-    visualize_results(pd.read_parquet(RESULT_PATH / "bfgs.parquet"))
-    visualize_results(pd.read_parquet(RESULT_PATH / "bfgs_inherited_x0.parquet"))
+    DIMS = [10, 20, 50, 100]
+
+    for dim in DIMS:
+        save_dir = get_plot_directory(dim)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        (save_dir / "random_x0").mkdir(parents=True, exist_ok=True)
+        (save_dir / "inherited_x0").mkdir(parents=True, exist_ok=True)
+
+        save_dir = get_plot_directory(dim)
+        visualize_results(
+            pd.read_parquet(get_result_directory(dim) / "bfgs.parquet"),
+            save_dir / "random_x0",
+        )
+        visualize_results(
+            pd.read_parquet(RESULT_PATH / "bfgs_inherited_x0.parquet"),
+            save_dir / "inherited_x0",
+        )
