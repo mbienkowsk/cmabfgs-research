@@ -133,7 +133,7 @@ def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray)
                 x0=x0,
                 collector=collector,
                 hess_inv=make_symmetrical(normalize(row["cov_mat"])),  # pyright: ignore[reportArgumentType]
-                identifier=f"{iters}_inherited_x0_normalized",
+                identifier=f"{iters}_random_x0_normalized",
             )
         run_bfgs(
             x0=x0,
