@@ -4,10 +4,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-DIM = 100
-RESULT_PATH = Path(__file__).parent / "results" / f"d{DIM}" / "agg"
-
 NUM_CURVES_TO_DISPLAY = 8
+ONLY_SHOW = True
 
 
 def get_plot_directory(dim: int):
@@ -37,14 +35,15 @@ def trim_constant_tail(s: pd.Series) -> pd.Series:
     return s.iloc[: idx[-1] + 2]
 
 
-def visualize_results(df: pd.DataFrame, save_dir: Path):
+def visualize_results(df: pd.DataFrame, save_dir: Path, only_show: bool):
     fig, ax = plt.subplots(figsize=(16, 9))
+    print(df.columns)
     df = pd.concat(
         {c: trim_constant_tail(df[c]) for c in df.columns},
         axis=1,
     )
     num_cols = df.shape[1]
-    every_nth = max(1, num_cols // NUM_CURVES_TO_DISPLAY)
+    every_nth = max(2, num_cols // NUM_CURVES_TO_DISPLAY)
     normalized_cols = [col for col in df.columns if "normalized" in col][
         :: every_nth // 2
     ]
@@ -58,7 +57,10 @@ def visualize_results(df: pd.DataFrame, save_dir: Path):
     )
     plt.legend([short_label(col) for col in raw_cols])
     plt.grid()
-    plt.savefig(save_dir / "non_normalized.png", dpi=300, bbox_inches="tight")
+    if only_show:
+        plt.show()
+    else:
+        plt.savefig(save_dir / "non_normalized.png", dpi=300, bbox_inches="tight")
 
     fig, ax = plt.subplots(figsize=(16, 9))
     df.plot(
@@ -69,7 +71,10 @@ def visualize_results(df: pd.DataFrame, save_dir: Path):
     )
     plt.legend([short_label(col) for col in normalized_cols])
     plt.grid()
-    plt.savefig(save_dir / "normalized.png", dpi=300, bbox_inches="tight")
+    if only_show:
+        plt.show()
+    else:
+        plt.savefig(save_dir / "normalized.png", dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -85,8 +90,10 @@ if __name__ == "__main__":
         visualize_results(
             pd.read_parquet(get_result_directory(dim) / "bfgs.parquet"),
             save_dir / "random_x0",
+            ONLY_SHOW,
         )
         visualize_results(
-            pd.read_parquet(RESULT_PATH / "bfgs_inherited_x0.parquet"),
+            pd.read_parquet(get_result_directory(dim) / "bfgs_inherited_x0.parquet"),
             save_dir / "inherited_x0",
+            ONLY_SHOW,
         )
