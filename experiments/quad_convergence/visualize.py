@@ -4,7 +4,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-NUM_CURVES_TO_DISPLAY = 8
 ONLY_SHOW = True
 
 
@@ -43,11 +42,8 @@ def visualize_results(df: pd.DataFrame, save_dir: Path, only_show: bool):
         axis=1,
     )
     num_cols = df.shape[1]
-    every_nth = max(2, num_cols // NUM_CURVES_TO_DISPLAY)
-    normalized_cols = [col for col in df.columns if "normalized" in col][
-        :: every_nth // 2
-    ]
-    raw_cols = [col for col in df.columns if "normalized" not in col][:: every_nth // 2]
+    normalized_cols = [col for col in df.columns if "normalized" in col]
+    raw_cols = [col for col in df.columns if "normalized" not in col]
 
     df.plot(
         ax=ax,
