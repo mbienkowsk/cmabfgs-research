@@ -53,7 +53,6 @@ def single_run(run_id: int):
             CovarianceMatrixEigenvalueList(),
             SigmaMeasurement(),
         ),
-        "cmaes",
         run_id,
         every_n_calls=EVERY_N_CALLS,
     )

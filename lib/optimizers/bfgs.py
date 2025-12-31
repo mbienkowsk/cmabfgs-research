@@ -75,7 +75,7 @@ class BFGS(Optimizer):
             )
 
             self.state.counter(
-                self.x0
+                np.array(self.x0)
             )  # ensures there is a single evaluation even if bfgs quits instantly
             self.callback(self.state, self.identifier)
             if not result.success:

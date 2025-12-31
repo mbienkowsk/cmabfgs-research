@@ -19,6 +19,7 @@ from .base import Optimizer
 class CMAESState:
     counter: EvalCounter
     covariance_matrix: np.ndarray
+    popsize: int
     sigma: float = 1
     mean: np.ndarray = field(default_factory=lambda: np.array([]))
     population_evaluations: list[float] = field(default_factory=list)
@@ -50,17 +51,11 @@ class CMAES(Optimizer):
         self.seed = seed
         self.stopper = stopper
         self.state = CMAESState(
-            covariance_matrix=self.inner._C,
-            counter=fun,
+            covariance_matrix=self.inner._C, counter=fun, popsize=popsize
         )
         self.callback = callback
         self.bounds = bounds
         self.identifier = identifier
-
-    @property
-    def raw_objective(self):
-        """Unwrap the objective function from the EvalCounter."""
-        return self.state.counter.fun
 
     @property
     def wrapped_objective(self):

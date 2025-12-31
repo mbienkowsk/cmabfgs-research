@@ -51,7 +51,7 @@ def run_vanilla(x: np.ndarray, seed: int, idx: int):
         CovarianceMatrixConditionNumber(),
         CovarianceMatrixDifferenceNorm(),
     ]
-    callback = MetricsCollector(metrics, "cmaes")
+    callback = MetricsCollector(metrics)
     stopper = CMAESEarlyStopping(max_evals=MAXEVALS, tolfun=1e-9)
     cmaes = CMAES(
         mean=x,

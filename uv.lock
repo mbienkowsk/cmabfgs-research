@@ -13,26 +13,15 @@ wheels = [
 
 [[package]]
 name = "cecxx"
-version = "0.1.0a2"
-source = { editable = "../../../projects/cecxx/python" }
+version = "0.1.0a3"
+source = { registry = "https://test.pypi.org/simple/" }
 dependencies = [
     { name = "nanobind" },
     { name = "numpy" },
     { name = "pytest" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "nanobind", specifier = ">=2.9.2" },
-    { name = "numpy", specifier = ">=2.3.5" },
-    { name = "pytest", specifier = ">=9.0.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "basedpyright", specifier = ">=1.36.1" },
-    { name = "ipython", specifier = ">=9.7.0" },
-    { name = "ruff", specifier = ">=0.14.9" },
+wheels = [
+    { url = "https://test-files.pythonhosted.org/packages/2c/cc/c34ca699cf5a73631e7f56d257b616004d7dca99bff032857d6c16da9dbd/cecxx-0.1.0a3-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5de8eaf8485ab5b9fe6da6a129f8ef9de0ef1a9a2c0b6fe46ee89bdd925f47c4", size = 11592911, upload-time = "2025-12-19T15:07:30.68Z" },
 ]
 
 [[package]]
@@ -814,7 +803,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cecxx", editable = "../../../projects/cecxx/python" },
+    { name = "cecxx", specifier = ">=0.1.0a3", index = "https://test.pypi.org/simple/" },
     { name = "cmaes", specifier = ">=0.11.1" },
     { name = "debugpy", specifier = ">=1.8.15" },
     { name = "ipython", specifier = ">=9.4.0" },

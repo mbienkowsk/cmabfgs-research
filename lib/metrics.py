@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -41,9 +43,22 @@ class Metric(ABC):
             return self.collect_from_counter(state.counter)
 
 
-class MeanEvaluation(Metric):
+class Mean(Metric):
     def key(self):
         return "mean"
+
+    def collect_cmaes(self, state: CMAESState):
+        return deepcopy(state.mean)
+
+    def collect_cmabfgs(self, state: CMABFGSState):
+        if state.mode == "CMAES":
+            return self.collect_cmaes(state.cmaes_state)
+        return None
+
+
+class MeanEvaluation(Metric):
+    def key(self):
+        return "fmean"
 
     def collect_cmaes(self, state: CMAESState):
         return state.counter.without_counting(state.mean)
@@ -64,13 +79,13 @@ class BestSoFar(Metric):
         return "best"
 
     def collect_cmaes(self, state: CMAESState):
-        return state.counter.best_so_far - self.optimum
+        return state.counter.best_so_far[1] - self.optimum
 
     def collect_bfgs(self, state: BFGSState):
-        return state.counter.best_so_far - self.optimum
+        return state.counter.best_so_far[1] - self.optimum
 
     def collect_from_counter(self, counter: EvalCounter):
-        return counter.best_so_far - self.optimum
+        return counter.best_so_far[1] - self.optimum
 
 
 class CovarianceMatrixConditionNumber(Metric):
@@ -119,3 +134,20 @@ class CovarianceMatrixEigenvalueList(Metric):
     def collect_cmaes(self, state: CMAESState):
         eigenvalues, _ = np.linalg.eigh(state.covariance_matrix)
         return eigenvalues
+
+
+@dataclass
+class CovarianceMatrix(Metric):
+    def key(self):
+        return "cov_mat"
+
+    def collect_cmaes(self, state: CMAESState):
+        return deepcopy(state.covariance_matrix)
+
+
+class BestXSoFar(Metric):
+    def key(self):
+        return "xbest"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.counter.best_so_far[0]

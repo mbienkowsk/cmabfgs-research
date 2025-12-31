@@ -39,7 +39,7 @@ class EvalCounter:
 
     fun: Callable
     num_evaluations: int = field(default=0)
-    best_solutions: list[float] = field(default_factory=list)
+    best_solutions: list[tuple[np.ndarray | None, float]] = field(default_factory=list)
     bounds: tuple[float, float] | None = None
     identifier: str = ""
 
@@ -47,7 +47,7 @@ class EvalCounter:
         self.num_evaluations += 1
 
         y = self.fun(x)
-        best_so_far = self.best_so_far
+        xbest, ybest = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
             msg = (
@@ -56,19 +56,19 @@ class EvalCounter:
             if self.identifier:
                 msg = f"{self.identifier}: {msg}"
             logger.warning(msg)
-            self.best_solutions.append(best_so_far)
+            self.best_solutions.append((xbest, ybest))
             return y
 
-        if not self.best_solutions or y < best_so_far:
-            self.best_solutions.append(y)
+        if not self.best_solutions or y < ybest:
+            self.best_solutions.append((x, y))
         else:
-            self.best_solutions.append(best_so_far)
+            self.best_solutions.append((xbest, ybest))
 
         return y
 
     @property
     def best_so_far(self):
-        return self.best_solutions[-1] if self.best_solutions else np.inf
+        return self.best_solutions[-1] if self.best_solutions else (None, np.inf)
 
     def copy_with_identifier(self, identifier: str):
         return EvalCounter(
@@ -108,16 +108,17 @@ def extract_objective_from_path(path: Path):
     raise ValueError(f"Could not extract objective from path: {path}")
 
 
-def assert_non_increasing(data_storage: pd.Series | pd.DataFrame, msg: str):
-    assert (data_storage.diff().iloc[1:] <= 0).all(), (
+def assert_non_increasing(data_storage: pd.Series | pd.DataFrame, msg: str = ""):
+    assert not (data_storage.diff() > 0).any().any(), (
         msg or "Series is not non-increasing"
     )
 
 
 def assert_all_non_increasing(
-    data_containers: Iterable[pd.Series | pd.DataFrame], msg: str
+    data_containers: Iterable[pd.Series | pd.DataFrame], msg: str = ""
 ):
-    (assert_non_increasing(c, msg) for c in data_containers)
+    for c in data_containers:
+        assert_non_increasing(c, msg)
 
 
 def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):
