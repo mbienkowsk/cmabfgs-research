@@ -35,11 +35,13 @@ if DEBUG:
     NUM_RUNS = 3
     EXACT_RUN = None
     CMAES_COLLECTION_INTERVAL = 20
+    TRY_FROM_ITERATIONS = [20, 40, 60, 80, 100, 120, 140]
 
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
     NUM_RUNS = int(os.environ["N_RUNS"])
     CMAES_COLLECTION_INTERVAL = int(os.environ["CMAES_COLLECTION_INTERVAL"])
+    TRY_AFTER_ITERATIONS = list(map(int, os.environ["TRY_AFTER"].split("-")))
 
 MAXEVALS = 10_000 * DIMENSIONS
 POPULATION_SIZE = 4 * DIMENSIONS
@@ -63,7 +65,14 @@ def try_load_and_split_cmaes_df_from_disk(dim: int):
     reindexed["cov_mat"] = reindexed["cov_mat"].apply(
         lambda arr: np.reshape(arr, (dim, dim))
     )
-    return [subdf for _, subdf in reindexed.groupby(level="run_id")]
+    # only run bfgs from the starting iters we want
+    reindexed_filtered_subdfs = [
+        subdf[subdf["iteration"].isin(TRY_FROM_ITERATIONS)].drop_duplicates(
+            ["iteration"]
+        )
+        for _, subdf in reindexed.groupby(level="run_id")
+    ]
+    return reindexed_filtered_subdfs
 
 
 def run_cmaes(run_id: int):
