@@ -138,11 +138,16 @@ class CovarianceMatrixEigenvalueList(Metric):
 
 @dataclass
 class CovarianceMatrix(Metric):
+    # whether to flatten and convert to list so that it can be read back
+    # from parquet
+    serialize: bool = False
+
     def key(self):
         return "cov_mat"
 
     def collect_cmaes(self, state: CMAESState):
-        return deepcopy(state.covariance_matrix)
+        C = deepcopy(state.covariance_matrix)
+        return list(np.ravel(C)) if self.serialize else C
 
 
 class BestXSoFar(Metric):
@@ -151,3 +156,14 @@ class BestXSoFar(Metric):
 
     def collect_cmaes(self, state: CMAESState):
         return state.counter.best_so_far[0]
+
+
+@dataclass
+class CMAESIteration(Metric):
+    popsize: int
+
+    def key(self):
+        return "iteration"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.num_evaluations // self.popsize

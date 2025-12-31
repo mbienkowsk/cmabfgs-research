@@ -2,7 +2,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, cast
+from typing import Callable, Hashable, cast
 
 import numpy as np
 import pandas as pd
@@ -130,3 +130,46 @@ def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):
         (rng.random(dimensions) - 0.5) * 2 * bounds,  # pyright: ignore[reportArgumentType]
     )
     return x, seed
+
+
+def compress_and_save(df: pd.DataFrame, path: Path):
+    df.to_parquet(path, index=True, compression="brotli")
+
+
+def summarize_data(df: pd.DataFrame):
+    print("Data Summary")
+    print("=" * 40)
+
+    def is_hashable_series(s):
+        return s.dropna().apply(lambda x: isinstance(x, Hashable)).all()
+
+    hashable_cols = [c for c in df.columns if is_hashable_series(df[c])]  # pyright: ignore[reportGeneralTypeIssues]
+
+    unique_counts = df[hashable_cols].nunique(dropna=True)
+
+    summary = pd.DataFrame(
+        {
+            "dtype": df.dtypes,
+            "non_null": df.count(),
+            "nulls": df.isna().sum(),
+        }
+    )
+
+    summary["unique"] = np.nan
+    summary.loc[hashable_cols, "unique"] = unique_counts
+
+    num_cols = df.select_dtypes(include="number")
+    if not num_cols.empty:
+        summary.loc[num_cols.columns, "min"] = num_cols.min()
+        summary.loc[num_cols.columns, "max"] = num_cols.max()
+        summary.loc[num_cols.columns, "mean"] = num_cols.mean()
+
+    print(summary)
+
+    print("\nHead")
+    print("-" * 40)
+    print(df.head())
+
+    print("\nTail")
+    print("-" * 40)
+    print(df.tail())

@@ -1,0 +1,7 @@
+10 25 Elliptic middle
+10 25 Elliptic corner
+10 25 Elliptic outside_corner
+
+20 25 Elliptic middle
+20 25 Elliptic corner
+20 25 Elliptic outside_corner
