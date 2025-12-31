@@ -23,7 +23,7 @@ from lib.util import (
 )
 
 LOG_LEVEL = "ERROR"
-DEBUG = os.getenv("DEBUG", True)
+DEBUG = os.getenv("DEBUG", False)
 logger.info(f"Debug set to {DEBUG}")
 BOUNDS = 100
 OBJECTIVE_NAME = "Elliptic"
@@ -35,7 +35,7 @@ if DEBUG:
     NUM_RUNS = 3
     EXACT_RUN = None
     CMAES_COLLECTION_INTERVAL = 20
-    TRY_FROM_ITERATIONS = [20, 40, 60, 80, 100, 120, 140]
+    TRY_AFTER_ITERATIONS = [20, 40, 60, 80, 100, 120, 140]
 
 else:
     DIMENSIONS = int(os.environ["DIMENSIONS"])
@@ -67,7 +67,7 @@ def try_load_and_split_cmaes_df_from_disk(dim: int):
     )
     # only run bfgs from the starting iters we want
     reindexed_filtered_subdfs = [
-        subdf[subdf["iteration"].isin(TRY_FROM_ITERATIONS)].drop_duplicates(
+        subdf[subdf["iteration"].isin(TRY_AFTER_ITERATIONS)].drop_duplicates(
             ["iteration"]
         )
         for _, subdf in reindexed.groupby(level="run_id")

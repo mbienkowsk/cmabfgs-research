@@ -12,10 +12,10 @@
 #SBATCH --chdir .
 
 # Read parameters for this array task
-read DIMENSIONS N_RUNS CMAES_COLLECTION_INTERVAL < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/quad_convergence/config.txt)
-export DIMENSIONS N_RUNS CMAES_COLLECTION_INTERVAL
+read DIMENSIONS N_RUNS CMAES_COLLECTION_INTERVAL TRY_AFTER < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/quad_convergence/config.txt)
+export DIMENSIONS N_RUNS CMAES_COLLECTION_INTERVAL TRY_AFTER
 
-echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS. Collecting every $CMAES_COLLECTION_INTERVAL iters"
+echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS. Collecting every $CMAES_COLLECTION_INTERVAL iters. Trying after iters $TRY_AFTER."
 
 module load trytonp/python3/3.13.0
 
