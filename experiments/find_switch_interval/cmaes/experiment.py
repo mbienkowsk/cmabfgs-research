@@ -33,6 +33,7 @@ class CMAESExperiment:
                 m.CMAESIteration(self.config.popsize),
                 m.CovarianceMatrix(serialize=True),
                 m.BestSoFar(),
+                m.Mean(),
             ],
             run_id,
             every_n_calls=self.config.collection_interval,
