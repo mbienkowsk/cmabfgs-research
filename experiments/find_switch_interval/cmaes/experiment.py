@@ -8,6 +8,8 @@ from loguru import logger
 import lib.metrics as m
 from experiments.find_switch_interval.cmaes.experiment_config import (
     CMAESExperimentConfig,
+)
+from experiments.find_switch_interval.common import (
     ObjectiveChoice,
     OptimumPosition,
 )

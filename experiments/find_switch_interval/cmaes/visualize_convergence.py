@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from experiments.find_switch_interval.cmaes.experiment_config import (
+from experiments.find_switch_interval.common import (
     ObjectiveChoice,
     OptimumPosition,
 )
