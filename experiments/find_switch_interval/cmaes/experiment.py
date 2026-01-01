@@ -1,6 +1,6 @@
-import multiprocessing as mp
 import os
 from dataclasses import dataclass
+from typing import override
 
 import pandas as pd
 from loguru import logger
@@ -10,6 +10,7 @@ from experiments.find_switch_interval.cmaes.experiment_config import (
     CMAESExperimentConfig,
 )
 from experiments.find_switch_interval.common import (
+    ExperimentBase,
     ObjectiveChoice,
     OptimumPosition,
 )
@@ -21,9 +22,10 @@ from lib.util import EvalCounter, compress_and_save, summarize_data
 
 
 @dataclass
-class CMAESExperiment:
+class CMAESExperiment(ExperimentBase[CMAESExperimentConfig]):
     config: CMAESExperimentConfig
 
+    @override
     def run_subprocess(self, run_id: int):
         objective = self.config.get_objective_instance()
         counter = EvalCounter(objective, bounds=self.config.bounds)  # pyright: ignore[reportArgumentType]
@@ -58,6 +60,7 @@ class CMAESExperiment:
         logger.info(f"{run_id}: done with optimization")
         return collector.as_dataframe()
 
+    @override
     def archive_data(self, data: list[pd.DataFrame]):
         df = pd.concat(data)
         outpath = self.config.output_directory / "raw.parquet"
@@ -66,12 +69,6 @@ class CMAESExperiment:
         if self.config.debug:
             df = pd.read_parquet(outpath)
             summarize_data(df)
-
-    def run(self):
-        with mp.Pool(mp.cpu_count()) as pool:
-            run_indices = self.config.get_run_indices()
-            data = pool.map(self.run_subprocess, run_indices)
-            self.archive_data(data)
 
 
 if __name__ == "__main__":

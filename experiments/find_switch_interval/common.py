@@ -1,7 +1,10 @@
+import multiprocessing as mp
 import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 
+import pandas as pd
 from loguru import logger
 
 from lib.funs import get_function_by_name
@@ -75,3 +78,20 @@ class ExperimentConfigBase:
         except KeyError as e:
             logger.error(f"Environment variable {e} is not set.")
             raise e
+
+
+@dataclass
+class ExperimentBase[ConfigType: ExperimentConfigBase](ABC):
+    config: ConfigType
+
+    @abstractmethod
+    def run_subprocess(self, run_id) -> pd.DataFrame: ...
+
+    @abstractmethod
+    def archive_data(self, data: list[pd.DataFrame]): ...
+
+    def run(self):
+        with mp.Pool(mp.cpu_count()) as pool:
+            run_indices = self.config.get_run_indices()
+            data = pool.map(self.run_subprocess, run_indices)
+            self.archive_data(data)
