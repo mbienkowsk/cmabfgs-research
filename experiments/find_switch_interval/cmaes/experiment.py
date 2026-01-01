@@ -32,11 +32,17 @@ class CMAESExperiment(ExperimentBase[CMAESExperimentConfig]):
         rng = IndividualGenerator(run_id, self.config.bounds, self.config.dimensions)
         x0 = rng.get_individual()
 
-        collector = MetricsCollector(
+        convergence_collector = MetricsCollector(
             [
                 m.CMAESIteration(self.config.popsize),
-                m.CovarianceMatrix(serialize=True),
                 m.BestSoFar(),
+            ],
+            run_id,
+            every_n_calls=1,
+        )
+        cov_mat_collector = MetricsCollector(
+            [
+                m.CovarianceMatrix(serialize=True),
                 m.Mean(),
             ],
             run_id,
@@ -52,13 +58,17 @@ class CMAESExperiment(ExperimentBase[CMAESExperimentConfig]):
                 self.config.max_evals,
                 tolfun=1e-9,
             ),
-            collector,
+            [convergence_collector, cov_mat_collector],
             self.config.bounds,
         )
         logger.info(f"{run_id}: constructed CMA-ES, starting optimization")
         cmaes.optimize()
         logger.info(f"{run_id}: done with optimization")
-        return collector.as_dataframe()
+        return convergence_collector.as_dataframe().merge(
+            cov_mat_collector.as_dataframe(),
+            on=["num_evaluations", "run_id"],
+            how="outer",
+        )
 
     @override
     def archive_data(self, data: list[pd.DataFrame]):

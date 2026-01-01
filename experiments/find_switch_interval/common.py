@@ -47,7 +47,7 @@ class ExperimentConfigBase:
     num_runs: int
     objective_choice: ObjectiveChoice
     optimum_position: OptimumPosition
-    debug: bool = False
+    debug: bool
     bounds: tuple[float, float] = field(init=False)
 
     def __post_init__(self):
@@ -59,13 +59,15 @@ class ExperimentConfigBase:
         raise NotImplementedError()
 
     def get_run_indices(self):
-        return range(1, self.num_runs)
+        return range(1, self.num_runs + 1)
 
     def get_objective_instance(self):
         return get_function_by_name(self.objective_choice.value, self.dimensions)
 
     @classmethod
     def create_from_env(cls):
+        """Since this is used on the cluster, debug is hardcoded
+        as False"""
         try:
             return cls(
                 dimensions=int(os.environ["DIMENSIONS"]),
@@ -74,6 +76,7 @@ class ExperimentConfigBase:
                 optimum_position=OptimumPosition(
                     os.environ["OPTIMUM_POSITION"],
                 ),
+                debug=False,
             )
         except KeyError as e:
             logger.error(f"Environment variable {e} is not set.")
