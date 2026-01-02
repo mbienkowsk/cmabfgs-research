@@ -6,8 +6,6 @@ from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
 )
 
-# TODO: ubic bfgs jak linesearch wyjdzie poza granice
-
 
 @dataclass
 class CMABFGSExperimentConfig(ExperimentConfigBase):

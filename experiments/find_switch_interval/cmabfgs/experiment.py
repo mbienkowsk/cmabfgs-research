@@ -50,7 +50,6 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
                 identifier=str(iters),
                 hess_inv0=self.reconstruct_covariance_matrix(row["cov_mat"]),
             )
-            # TODO: kill outside bounds
             bfgs.optimize()
 
         # join column-wise for single df with cmaes + bfgs
