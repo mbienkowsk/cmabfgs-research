@@ -9,6 +9,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
     CMABFGSExperimentConfig,
 )
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
+from lib.util import compress_and_save, summarize_data
 
 ANY_INT = 0
 
@@ -101,7 +102,21 @@ class CMABFGSPostprocessor:
         df_out["multiplier"] = df_out["multiplier"].astype("category")
         return df_out
 
-    def run(self, n_jobs: int = -1) -> pd.DataFrame:
+    def archive_data(self, raw: pd.DataFrame, agg: pd.DataFrame):
+        outpath = self.config.output_directory / "raw_curves.parquet"
+        compress_and_save(raw, outpath)
+
+        if self.config.debug:
+            df = pd.read_parquet(outpath)
+            summarize_data(df)
+
+        outpath = self.config.output_directory / "agg_curves.parquet"
+        compress_and_save(agg, outpath)
+        if self.config.debug:
+            df = pd.read_parquet(outpath)
+            summarize_data(df)
+
+    def run(self, n_jobs: int = -1):
         raw = pd.read_parquet(self.input_file)
 
         grouped = list(raw.groupby("run_id"))
@@ -111,10 +126,45 @@ class CMABFGSPostprocessor:
             for run_id, df in tqdm(grouped, "Processing runs")
         )
 
-        return pd.concat(
-            dfs,
-            ignore_index=True,
-        )
+        raw = pd.concat(dfs, ignore_index=True)  # pyright: ignore
+        agg = self.aggregate_curves(raw)
+        self.archive_data(raw, agg)
+
+    @staticmethod
+    def aggregate_curves(df: pd.DataFrame) -> pd.DataFrame:
+        results = []
+
+        for mul, df_mul in df.groupby("multiplier"):
+            curves = []
+            grids = []
+
+            for _, g in df_mul.groupby("run_id"):
+                s = g.sort_index()["value"]
+                curves.append(s)
+                grids.append(s.index)
+
+            grid = pd.Index(sorted(set().union(*grids)))
+
+            aligned = [
+                s.reindex(grid).interpolate(method="index").ffill() for s in curves
+            ]
+
+            stacked = pd.concat(aligned, axis=1)
+
+            out = pd.DataFrame(
+                {
+                    "mean": stacked.mean(axis=1),
+                    "median": stacked.median(axis=1),
+                    "q25": stacked.quantile(0.25, axis=1),
+                    "q75": stacked.quantile(0.75, axis=1),
+                }
+            )
+
+            out = out.reset_index().assign(multiplier=mul)
+
+            results.append(out)
+
+        return pd.concat(results, ignore_index=True)
 
 
 if __name__ == "__main__":
