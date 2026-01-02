@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass, field
 
+import matplotlib.pyplot as plt
 import pandas as pd
 from joblib import Parallel, delayed
 from tqdm import tqdm
@@ -56,6 +57,7 @@ class CMABFGSPostprocessor:
             mask = cmaes_series["iteration"] > threshold
             offset.loc[mask] += spans[col]
         cmaes_series.index = cmaes_series.index + offset
+        cmaes_series = cmaes_series.rename_axis("num_evaluations")
 
         bfgs_curves = []
 
@@ -68,7 +70,7 @@ class CMABFGSPostprocessor:
             ].index.min()
 
             s = data[col].dropna()
-            s.index = s.index + start_eval
+            s.index = (s.index + start_eval).rename("num_evaluations")
             bfgs_curves.append(s)
 
         series = [cmaes_series["best_cmaes"]] + [s for s in bfgs_curves if not s.empty]
@@ -128,6 +130,7 @@ class CMABFGSPostprocessor:
 
         raw = pd.concat(dfs, ignore_index=True)  # pyright: ignore
         agg = self.aggregate_curves(raw)
+        self.plot(agg)
         self.archive_data(raw, agg)
 
     @staticmethod
@@ -139,7 +142,7 @@ class CMABFGSPostprocessor:
             grids = []
 
             for _, g in df_mul.groupby("run_id"):
-                s = g.sort_index()["value"]
+                s = g.set_index("num_evaluations").sort_index()["value"]
                 curves.append(s)
                 grids.append(s.index)
 
@@ -159,12 +162,32 @@ class CMABFGSPostprocessor:
                     "q75": stacked.quantile(0.75, axis=1),
                 }
             )
+            out.index = out.index.rename("num_evaluations")
 
             out = out.reset_index().assign(multiplier=mul)
 
             results.append(out)
 
         return pd.concat(results, ignore_index=True)
+
+    def plot(self, agg_df: pd.DataFrame):
+        fig, ax = plt.subplots(figsize=(16, 9))
+
+        for mul, mul_df in agg_df.groupby("multiplier"):
+            mul_df.plot(
+                ax=ax,
+                logx=True,
+                logy=True,
+                x="num_evaluations",
+                y="mean",
+                label=f"przełączenie co {str(mul)} * d = {int(mul * self.config.dimensions)} iteracji",  # pyright: ignore
+                grid=True,
+            )
+
+        plt.title(
+            f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})"
+        )
+        plt.show()
 
 
 if __name__ == "__main__":
