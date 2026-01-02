@@ -9,7 +9,7 @@ import pandas as pd
 from loguru import logger
 from sympy import prime
 
-from lib.bound_handling import check_bounds
+from lib.bound_handling import OutOfBoundsError, check_bounds
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -39,9 +39,12 @@ class EvalCounter:
 
     fun: Callable
     num_evaluations: int = field(default=0)
-    best_solutions: list[tuple[np.ndarray | None, float]] = field(default_factory=list)
+    best_solutions: list[tuple[np.ndarray | None, float]] = field(
+        default_factory=list, init=False
+    )
     bounds: tuple[float, float] | None = None
     identifier: str = ""
+    kill_outside_bounds: bool = False
 
     def __call__(self, x):
         self.num_evaluations += 1
@@ -50,12 +53,18 @@ class EvalCounter:
         xbest, ybest = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
+            if self.kill_outside_bounds:
+                raise OutOfBoundsError(
+                    f"{self.identifier}: Evaluation out of bounds, stopping optimization after {self.num_evaluations} evals"
+                )
+
             msg = (
                 "Out of bounds evaluation detected. Refusing to update best_solutions."
             )
             if self.identifier:
                 msg = f"{self.identifier}: {msg}"
             logger.warning(msg)
+
             self.best_solutions.append((xbest, ybest))
             return y
 

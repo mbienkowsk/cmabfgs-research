@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+import sys
 from dataclasses import dataclass
 from typing import override
 
@@ -36,7 +37,9 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
         collector = MetricsCollector([m.BestSoFar()], run_id)
         for iters, row in df[df["cov_mat"].notna()].set_index("iteration").iterrows():
             counter = EvalCounter(
-                self.config.get_objective_instance()  # pyright: ignore[reportArgumentType]
+                self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
+                bounds=self.config.bounds,
+                kill_outside_bounds=True,
             )
             bfgs = BFGS(
                 row["mean"],
@@ -82,6 +85,7 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
 
 if __name__ == "__main__":
     logger.remove()
+    logger.add(sys.stderr, level="WARNING")
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
 
