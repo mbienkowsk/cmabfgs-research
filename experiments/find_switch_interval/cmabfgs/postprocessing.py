@@ -10,6 +10,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
     CMABFGSExperimentConfig,
 )
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
+from lib.serde import aggregate_dataframes
 from lib.util import compress_and_save, summarize_data
 
 ANY_INT = 0
@@ -97,7 +98,6 @@ class CMABFGSPostprocessor:
                 .reset_index()
                 .assign(run_id=run_id, multiplier=mul)
             )
-
             results.append(out)
 
         df_out = pd.concat(results, ignore_index=True)
@@ -120,6 +120,9 @@ class CMABFGSPostprocessor:
 
     def run(self, n_jobs: int = -1):
         raw = pd.read_parquet(self.input_file)
+        only_cmaes = aggregate_dataframes(
+            [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")], None
+        )
 
         grouped = list(raw.groupby("run_id"))
 
@@ -130,7 +133,7 @@ class CMABFGSPostprocessor:
 
         raw = pd.concat(dfs, ignore_index=True)  # pyright: ignore
         agg = self.aggregate_curves(raw)
-        self.plot(agg)
+        self.plot(agg, only_cmaes)
         self.archive_data(raw, agg)
 
     @staticmethod
@@ -170,7 +173,7 @@ class CMABFGSPostprocessor:
 
         return pd.concat(results, ignore_index=True)
 
-    def plot(self, agg_df: pd.DataFrame):
+    def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
         fig, ax = plt.subplots(figsize=(16, 9))
 
         for mul, mul_df in agg_df.groupby("multiplier"):
@@ -183,6 +186,10 @@ class CMABFGSPostprocessor:
                 label=f"przełączenie co {str(mul)} * d = {int(mul * self.config.dimensions)} iteracji",  # pyright: ignore
                 grid=True,
             )
+
+        cmaes_df.plot(
+            ax=ax, logx=True, logy=True, y="best_cmaes", label="vanilla CMA-ES"
+        )
 
         plt.title(
             f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})"
