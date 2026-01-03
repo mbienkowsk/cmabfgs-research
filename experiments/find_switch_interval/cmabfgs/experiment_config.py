@@ -4,12 +4,14 @@ from typing import override
 
 from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
+    HessianNormalization,
 )
 
 
 @dataclass
 class CMABFGSExperimentConfig(ExperimentConfigBase):
     max_evals: int = field(init=False)
+    hess_normalization: HessianNormalization = HessianNormalization.UNIT_DIM
 
     def __post_init__(self):
         super().__post_init__()
@@ -24,6 +26,7 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
             / self.objective_choice.value
             / str(self.dimensions)
             / self.optimum_position.value
+            / self.hess_normalization.value
         )
 
     @property
@@ -35,5 +38,6 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
             / self.objective_choice.value
             / str(self.dimensions)
             / self.optimum_position.value
+            / self.hess_normalization.value
             / "raw.parquet"
         )

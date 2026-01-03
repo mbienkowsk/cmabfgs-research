@@ -14,6 +14,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 )
 from experiments.find_switch_interval.common import (
     ExperimentBase,
+    HessianNormalization,
     ObjectiveChoice,
     OptimumPosition,
 )
@@ -30,7 +31,10 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
     def reconstruct_covariance_matrix(self, mat: np.ndarray):
         reshaped = np.reshape(mat, (self.config.dimensions, self.config.dimensions))
         # normalize to norm=dim
-        normalized = reshaped / np.linalg.norm(reshaped) * self.config.dimensions
+        normalized = reshaped / np.linalg.norm(reshaped)
+        if self.config.hess_normalization == HessianNormalization.UNIT_DIM:
+            normalized *= self.config.dimensions
+
         return normalized * 0.5 + normalized.T * 0.5
 
     def run_subprocess(self, run_id: int, df: pd.DataFrame):
