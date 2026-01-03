@@ -1,5 +1,7 @@
 import re
 from dataclasses import dataclass, field
+from itertools import product
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -173,8 +175,29 @@ class CMABFGSPostprocessor:
 
         return pd.concat(results, ignore_index=True)
 
+    @property
+    def plot_save_path(self):
+        return (
+            Path(__file__).parent
+            / "results"
+            / "plots"
+            / self.config.objective_choice.value
+            / str(self.config.dimensions)
+            / f"{self.config.optimum_position.value}.png"
+        )
+
     def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
         fig, ax = plt.subplots(figsize=(16, 9))
+
+        secax = ax.secondary_xaxis(
+            "bottom",
+            functions=(
+                lambda x: x / (4 * self.config.dimensions),  # pyright: ignore[reportOperatorIssue]
+                lambda x: x * 4 * self.config.dimensions,  # pyright: ignore[reportOperatorIssue]
+            ),
+        )
+        secax.spines["bottom"].set_position(("outward", 40))
+        plt.tight_layout()
 
         for mul, mul_df in agg_df.groupby("multiplier"):
             mul_df.plot(
@@ -184,24 +207,37 @@ class CMABFGSPostprocessor:
                 x="num_evaluations",
                 y="mean",
                 label=f"przełączenie co {str(mul)} * d = {int(mul * self.config.dimensions)} iteracji",  # pyright: ignore
-                grid=True,
             )
 
         cmaes_df.plot(
             ax=ax, logx=True, logy=True, y="best_cmaes", label="vanilla CMA-ES"
         )
+        ax.grid()
 
         plt.title(
             f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})"
         )
-        plt.show()
+        secax.set_xlabel("Iteracje CMA-ES")
+        ax.set_xlabel("Liczba ewaluacji funkcji celu")
+        if self.config.debug:
+            plt.show()
+        else:
+            self.plot_save_path.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(self.plot_save_path, dpi=300)
 
 
 if __name__ == "__main__":
-    # FIXME: kill bfgs out of bounds
-    processor = CMABFGSPostprocessor(
-        CMABFGSExperimentConfig(
-            10, ANY_INT, ObjectiveChoice.ELLIPTIC, OptimumPosition.MIDDLE, True
+    dims = [10, 20, 50]
+    objectives = [ObjectiveChoice.ELLIPTIC, ObjectiveChoice.RASTRIGIN]
+    options = [
+        OptimumPosition.MIDDLE,
+        OptimumPosition.CORNER,
+        OptimumPosition.OUTSIDE_CORNER,
+    ]
+    for dim, obj, op in tqdm(
+        product(dims, objectives, options), "Processing experiment instances..."
+    ):
+        processor = CMABFGSPostprocessor(
+            CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False)
         )
-    )
-    processor.run()
+        processor.run()
