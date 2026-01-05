@@ -20,6 +20,7 @@ from experiments.find_switch_interval.common import (
 )
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
+from lib.random import IndividualGenerator
 from lib.stopping import BFGSEarlyStopping
 from lib.util import EvalCounter, compress_and_save, summarize_data
 
@@ -27,6 +28,25 @@ from lib.util import EvalCounter, compress_and_save, summarize_data
 @dataclass
 class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
     config: CMABFGSExperimentConfig
+
+    def run_vanilla_bfgs(self, run_id: int, collector: MetricsCollector):
+        rng = IndividualGenerator(run_id, self.config.bounds, self.config.dimensions)
+        counter = EvalCounter(
+            self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
+            bounds=self.config.bounds,
+            kill_outside_bounds=True,
+        )
+        x0 = rng.get_individual()
+        bfgs = BFGS(
+            x0,
+            counter,
+            collector,
+            BFGSEarlyStopping(max_evals=self.config.max_evals),
+            self.config.bounds,
+            identifier="vanilla_bfgs",
+        )
+        bfgs.optimize()
+        return
 
     def reconstruct_covariance_matrix(self, mat: np.ndarray):
         reshaped = np.reshape(mat, (self.config.dimensions, self.config.dimensions))
@@ -39,6 +59,8 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
 
     def run_subprocess(self, run_id: int, df: pd.DataFrame):
         collector = MetricsCollector([m.BestSoFar()], run_id)
+        self.run_vanilla_bfgs(run_id, collector)
+
         for iters, row in df[df["cov_mat"].notna()].set_index("iteration").iterrows():
             counter = EvalCounter(
                 self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
@@ -88,13 +110,18 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, level="WARNING")
+    logger.add(sys.stderr, level="ERROR")
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
 
     if debug:
         config = CMABFGSExperimentConfig(
-            10, 5, ObjectiveChoice.ELLIPTIC, OptimumPosition.MIDDLE, True
+            10,
+            25,
+            ObjectiveChoice.ELLIPTIC,
+            OptimumPosition.MIDDLE,
+            True,
+            HessianNormalization.UNIT_DIM,
         )
     else:
         config = CMABFGSExperimentConfig.create_from_env()

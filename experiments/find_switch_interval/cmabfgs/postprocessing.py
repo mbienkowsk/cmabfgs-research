@@ -1,3 +1,4 @@
+import os
 import re
 from dataclasses import dataclass, field
 from itertools import product
@@ -107,6 +108,17 @@ class CMABFGSPostprocessor:
             results.append(out)
 
         df_out = pd.concat(results, ignore_index=True)
+        vanilla_bfgs_curve = (
+            df["best_vanilla_bfgs"]
+            .rename("value")
+            .reset_index()
+            .dropna()
+            .assign(run_id=run_id, multiplier=0.0)
+        )
+        df_out = pd.concat(
+            [df_out, vanilla_bfgs_curve],
+            ignore_index=True,
+        )
         df_out["multiplier"] = df_out["multiplier"].astype("category")
         return df_out
 
@@ -158,7 +170,8 @@ class CMABFGSPostprocessor:
             grid = pd.Index(sorted(set().union(*grids)))
 
             aligned = [
-                s.reindex(grid).interpolate(method="index").ffill() for s in curves
+                s.reindex(grid).interpolate(method="index").ffill().bfill()
+                for s in curves
             ]
 
             stacked = pd.concat(aligned, axis=1)
@@ -210,7 +223,7 @@ class CMABFGSPostprocessor:
                 logy=True,
                 x="num_evaluations",
                 y="mean",
-                label=f"przełączenie co {str(mul)} * d = {int(mul * self.config.dimensions)} iteracji",  # pyright: ignore
+                label=self.get_label_from_mul(mul),  # pyright: ignore[reportArgumentType]
             )
 
         cmaes_df.plot(
@@ -231,25 +244,46 @@ class CMABFGSPostprocessor:
             self.plot_save_path.parent.mkdir(parents=True, exist_ok=True)
             plt.savefig(self.plot_save_path, dpi=300)
 
+    def get_label_from_mul(self, mul: float) -> str:
+        if mul == 0:
+            return "Vanilla BFGS"
+        iters = int(self.config.dimensions * mul)
+        return f"Przełączenie co {iters} iteracji"
+
 
 if __name__ == "__main__":
-    dims = [10, 20, 50, 100]
-    objectives = [ObjectiveChoice.ELLIPTIC, ObjectiveChoice.RASTRIGIN]
-    options = [
-        OptimumPosition.MIDDLE,
-        OptimumPosition.CORNER,
-        OptimumPosition.OUTSIDE_CORNER,
-        OptimumPosition.CORNER_NEAR,
-    ]
-    hess_norms = [
-        HessianNormalization.UNIT,
-        HessianNormalization.UNIT_DIM,
-    ]
-    for dim, obj, op, hess_norm in tqdm(
-        product(dims, objectives, options, hess_norms),
-        "Processing experiment instances...",
-    ):
+    debug = bool(os.getenv("DEBUG", ""))
+    print(f"Debug mode: {debug}")
+    if debug:
         processor = CMABFGSPostprocessor(
-            CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)
+            CMABFGSExperimentConfig(
+                10,
+                ANY_INT,
+                ObjectiveChoice.ELLIPTIC,
+                OptimumPosition.MIDDLE,
+                False,
+                HessianNormalization.UNIT_DIM,
+            )
         )
         processor.run()
+    else:
+        dims = [10, 20, 50, 100]
+        objectives = [ObjectiveChoice.ELLIPTIC, ObjectiveChoice.RASTRIGIN]
+        options = [
+            OptimumPosition.MIDDLE,
+            OptimumPosition.CORNER,
+            OptimumPosition.OUTSIDE_CORNER,
+            OptimumPosition.CORNER_NEAR,
+        ]
+        hess_norms = [
+            HessianNormalization.UNIT,
+            HessianNormalization.UNIT_DIM,
+        ]
+        for dim, obj, op, hess_norm in tqdm(
+            product(dims, objectives, options, hess_norms),
+            "Processing experiment instances...",
+        ):
+            processor = CMABFGSPostprocessor(
+                CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)
+            )
+            processor.run()
