@@ -1,24 +1,24 @@
-10 24 Elliptic middle
-10 24 Elliptic corner
-10 24 Elliptic outside_corner
-20 24 Elliptic middle
-20 24 Elliptic corner
-20 24 Elliptic outside_corner
-50 24 Elliptic middle
-50 24 Elliptic corner
-50 24 Elliptic outside_corner
-100 24 Elliptic middle
-100 24 Elliptic corner
-100 24 Elliptic outside_corner
-10 24 Rastrigin middle
-10 24 Rastrigin corner
-10 24 Rastrigin outside_corner
-20 24 Rastrigin middle
-20 24 Rastrigin corner
-20 24 Rastrigin outside_corner
-50 24 Rastrigin middle
-50 24 Rastrigin corner
-50 24 Rastrigin outside_corner
-100 24 Rastrigin middle
-100 24 Rastrigin corner
-100 24 Rastrigin outside_corner
+10 25 Elliptic middle unit
+10 25 Elliptic corner unit
+10 25 Elliptic outside_corner unit
+20 25 Elliptic middle unit
+20 25 Elliptic corner unit
+20 25 Elliptic outside_corner unit
+50 25 Elliptic middle unit
+50 25 Elliptic corner unit
+50 25 Elliptic outside_corner unit
+100 25 Elliptic middle unit
+100 25 Elliptic corner unit
+100 25 Elliptic outside_corner unit
+10 25 Rastrigin middle unit
+10 25 Rastrigin corner unit
+10 25 Rastrigin outside_corner unit
+20 25 Rastrigin middle unit
+20 25 Rastrigin corner unit
+20 25 Rastrigin outside_corner unit
+50 25 Rastrigin middle unit
+50 25 Rastrigin corner unit
+50 25 Rastrigin outside_corner unit
+100 25 Rastrigin middle unit
+100 25 Rastrigin corner unit
+100 25 Rastrigin outside_corner unit

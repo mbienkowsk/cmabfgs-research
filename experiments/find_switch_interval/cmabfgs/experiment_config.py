@@ -39,7 +39,6 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
             / self.objective_choice.value
             / str(self.dimensions)
             / self.optimum_position.value
-            / self.hess_normalization.value
             / "raw.parquet"
         )
 
