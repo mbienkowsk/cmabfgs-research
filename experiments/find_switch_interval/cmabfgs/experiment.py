@@ -43,6 +43,9 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
             collector,
             BFGSEarlyStopping(max_evals=self.config.max_evals),
             self.config.bounds,
+            hess_inv0=np.eye(self.config.dimensions)
+            if self.config.hess_normalization == HessianNormalization.UNIT_DIM
+            else np.eye(self.config.dimensions) / self.config.dimensions,
             identifier="vanilla_bfgs",
         )
         bfgs.optimize()
