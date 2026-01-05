@@ -11,7 +11,11 @@ from tqdm import tqdm
 from experiments.find_switch_interval.cmabfgs.experiment_config import (
     CMABFGSExperimentConfig,
 )
-from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
+from experiments.find_switch_interval.common import (
+    HessianNormalization,
+    ObjectiveChoice,
+    OptimumPosition,
+)
 from lib.serde import aggregate_dataframes
 from lib.util import compress_and_save, summarize_data
 
@@ -188,7 +192,7 @@ class CMABFGSPostprocessor:
         )
 
     def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
-        fig, ax = plt.subplots(figsize=(16, 9))
+        fig, ax = plt.subplots(figsize=(16, 11))
 
         secax = ax.secondary_xaxis(
             "bottom",
@@ -198,7 +202,6 @@ class CMABFGSPostprocessor:
             ),
         )
         secax.spines["bottom"].set_position(("outward", 40))
-        plt.tight_layout()
 
         for mul, mul_df in agg_df.groupby("multiplier"):
             mul_df.plot(
@@ -216,10 +219,12 @@ class CMABFGSPostprocessor:
         ax.grid()
 
         plt.title(
-            f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})"
+            f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})\n\
+            Hesjan: {self.config.hess_normalization.to_plot_label()}"
         )
         secax.set_xlabel("Iteracje CMA-ES")
         ax.set_xlabel("Liczba ewaluacji funkcji celu")
+        plt.tight_layout()
         if self.config.debug:
             plt.show()
         else:
@@ -236,10 +241,15 @@ if __name__ == "__main__":
         OptimumPosition.OUTSIDE_CORNER,
         OptimumPosition.CORNER_NEAR,
     ]
-    for dim, obj, op in tqdm(
-        product(dims, objectives, options), "Processing experiment instances..."
+    hess_norms = [
+        HessianNormalization.UNIT,
+        HessianNormalization.UNIT_DIM,
+    ]
+    for dim, obj, op, hess_norm in tqdm(
+        product(dims, objectives, options, hess_norms),
+        "Processing experiment instances...",
     ):
         processor = CMABFGSPostprocessor(
-            CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False)
+            CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)
         )
         processor.run()

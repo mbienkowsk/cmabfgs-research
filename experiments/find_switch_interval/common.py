@@ -52,9 +52,9 @@ class HessianNormalization(Enum):
     def to_plot_label(self):
         match self:
             case HessianNormalization.UNIT:
-                return "skalowanie jednostkowe ($sqrt{sum_{ij}{C_{ij}^2}} = 1$)"
+                return "skalowanie jednostkowe ($\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1$)"
             case HessianNormalization.UNIT_DIM:
-                return "skalowanie jednostkowe do wymiarowości ($sqrt{sum{ij}{C_{ij}^2}} = d$)"
+                return "skalowanie jednostkowe do wymiarowości ($\\sqrt{\\sum{ij}{C_{ij}^2}} = d$)"
 
 
 class OptimumPosition(Enum):
