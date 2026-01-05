@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import override
@@ -40,4 +41,17 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
             / self.optimum_position.value
             / self.hess_normalization.value
             / "raw.parquet"
+        )
+
+    @override
+    @classmethod
+    def create_from_env(cls):
+        base = super().create_from_env()
+        return cls(
+            dimensions=base.dimensions,
+            num_runs=base.num_runs,
+            objective_choice=base.objective_choice,
+            optimum_position=base.optimum_position,
+            debug=base.debug,
+            hess_normalization=HessianNormalization(os.environ["HESS_NORM"]),
         )

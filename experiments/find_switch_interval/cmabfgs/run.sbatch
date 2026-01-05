@@ -12,10 +12,10 @@
 #SBATCH --chdir .
 
 # Read parameters for this array task
-read DIMENSIONS N_RUNS OBJECTIVE_CHOICE OPTIMUM_POSITION < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_interval/cmabfgs/config.txt)
-export DIMENSIONS N_RUNS OBJECTIVE_CHOICE OPTIMUM_POSITION
+read DIMENSIONS N_RUNS OBJECTIVE_CHOICE OPTIMUM_POSITION HESS_NORM < <(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" experiments/find_switch_interval/cmabfgs/config.txt)
+export DIMENSIONS N_RUNS OBJECTIVE_CHOICE OPTIMUM_POSITION HESS_NORM
 
-echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS, objective: $OBJECTIVE_CHOICE, optimum: $OPTIMUM_POSITION."
+echo "Running with dimensions: $DIMENSIONS, runs: $N_RUNS, objective: $OBJECTIVE_CHOICE, optimum: $OPTIMUM_POSITION, hess_norm: $HESS_NORM."
 
 module load trytonp/python3/3.13.0
 
