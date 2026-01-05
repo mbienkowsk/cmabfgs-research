@@ -183,7 +183,8 @@ class CMABFGSPostprocessor:
             / "plots"
             / self.config.objective_choice.value
             / str(self.config.dimensions)
-            / f"{self.config.optimum_position.value}.png"
+            / self.config.optimum_position.value
+            / f"{self.config.hess_normalization.value}.png"
         )
 
     def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
@@ -227,12 +228,13 @@ class CMABFGSPostprocessor:
 
 
 if __name__ == "__main__":
-    dims = [10, 20, 50]
+    dims = [10, 20, 50, 100]
     objectives = [ObjectiveChoice.ELLIPTIC, ObjectiveChoice.RASTRIGIN]
     options = [
         OptimumPosition.MIDDLE,
         OptimumPosition.CORNER,
         OptimumPosition.OUTSIDE_CORNER,
+        OptimumPosition.CORNER_NEAR,
     ]
     for dim, obj, op in tqdm(
         product(dims, objectives, options), "Processing experiment instances..."
