@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -47,7 +48,13 @@ class ConvergencePlotter:
 
 
 if __name__ == "__main__":
-    p = ConvergencePlotter(
-        50, OptimumPosition.OUTSIDE_CORNER, ObjectiveChoice.RASTRIGIN
-    )
-    p.plot_agg()
+    dims = [100]
+    positions = [OptimumPosition.MIDDLE]
+    objectives = [getattr(ObjectiveChoice, f"CEC{i}") for i in range(1, 31)]
+    for dim, pos, obj in product(dims, positions, objectives):
+        plotter = ConvergencePlotter(
+            dimensions=dim,
+            optimum_position=pos,
+            objective_choice=obj,
+        )
+        plotter.plot_agg()
