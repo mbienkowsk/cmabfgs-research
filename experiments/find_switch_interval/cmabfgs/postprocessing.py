@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass, field
 from itertools import product
 from pathlib import Path
+from typing import Callable
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -251,6 +252,15 @@ class CMABFGSPostprocessor:
         return f"Przełączenie co {iters} iteracji"
 
 
+def process_config(
+    dim: int, obj: Callable, op: OptimumPosition, hess_norm: HessianNormalization
+):
+    config = CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)  # pyright: ignore[reportArgumentType]
+    processor = CMABFGSPostprocessor(config)
+
+    processor.run()
+
+
 if __name__ == "__main__":
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
@@ -268,22 +278,17 @@ if __name__ == "__main__":
         processor.run()
     else:
         dims = [10, 20, 50, 100]
-        objectives = [ObjectiveChoice.ELLIPTIC, ObjectiveChoice.RASTRIGIN]
+        objectives = [getattr(ObjectiveChoice, f"CEC{i}") for i in range(1, 31)]
         options = [
             OptimumPosition.MIDDLE,
-            OptimumPosition.CORNER,
-            OptimumPosition.OUTSIDE_CORNER,
-            OptimumPosition.CORNER_NEAR,
         ]
         hess_norms = [
-            HessianNormalization.UNIT,
             HessianNormalization.UNIT_DIM,
         ]
-        for dim, obj, op, hess_norm in tqdm(
-            product(dims, objectives, options, hess_norms),
-            "Processing experiment instances...",
-        ):
-            processor = CMABFGSPostprocessor(
-                CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)
+
+        Parallel(n_jobs=-1, backend="loky")(
+            delayed(process_config)(dim, obj, op, hess_norm)
+            for dim, obj, op, hess_norm in product(
+                dims, objectives, options, hess_norms
             )
-            processor.run()
+        )
