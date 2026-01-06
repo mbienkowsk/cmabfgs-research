@@ -70,6 +70,7 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
                 bounds=self.config.bounds,
                 kill_outside_bounds=True,
             )
+            hess_inv0 = self.reconstruct_covariance_matrix(row["cov_mat"])
             bfgs = BFGS(
                 row["mean"],
                 counter,
@@ -77,9 +78,18 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
                 BFGSEarlyStopping(max_evals=self.config.max_evals),
                 self.config.bounds,
                 identifier=str(iters),
-                hess_inv0=self.reconstruct_covariance_matrix(row["cov_mat"]),
+                hess_inv0=hess_inv0,
             )
-            bfgs.optimize()
+            try:
+                bfgs.optimize()
+            except ValueError as e:
+                logger.error(
+                    f"Run {run_id}, iter {iters}: BFGS failed with error: {e}. Configuration:\n {self.config}"
+                )
+                debug_stub = self.config.debug_filename_stub
+                np.save(
+                    debug_stub.with_name(debug_stub.stem + "_inv_hess.npz"), hess_inv0
+                )
 
         # join column-wise for single df with cmaes + bfgs
         rv = pd.concat(

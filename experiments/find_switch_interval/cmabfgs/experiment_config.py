@@ -19,6 +19,14 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
         self.max_evals = 10_000 * self.dimensions
 
     @property
+    def debug_filename_stub(self):
+        return (
+            Path(__file__).parent
+            / "debug"
+            / f"{self.objective_choice.value}_d{self.dimensions}_debug"
+        )
+
+    @property
     @override
     def output_directory(self):
         return (
