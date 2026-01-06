@@ -88,8 +88,10 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
                 )
                 debug_stub = self.config.debug_filename_stub
                 np.save(
-                    debug_stub.with_name(debug_stub.stem + "_inv_hess"), hess_inv0
+                    debug_stub.with_name(debug_stub.stem + f"_iters_{iters}_inv_hess"),
+                    hess_inv0,
                 )
+                continue
 
         # join column-wise for single df with cmaes + bfgs
         rv = pd.concat(
