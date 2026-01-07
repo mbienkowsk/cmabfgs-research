@@ -8,6 +8,7 @@ from typing import Callable
 import matplotlib.pyplot as plt
 import pandas as pd
 from joblib import Parallel, delayed
+from loguru import logger
 from tqdm import tqdm
 
 from experiments.find_switch_interval.cmabfgs.experiment_config import (
@@ -138,7 +139,11 @@ class CMABFGSPostprocessor:
             summarize_data(df)
 
     def run(self, n_jobs: int = -1):
-        raw = pd.read_parquet(self.input_file)
+        try:
+            raw = pd.read_parquet(self.input_file)
+        except Exception as e:
+            logger.error(f"MISSING RUN FILE FOR CONFIGURATION {self.config}")
+            return
         only_cmaes = aggregate_dataframes(
             [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")], None
         )
