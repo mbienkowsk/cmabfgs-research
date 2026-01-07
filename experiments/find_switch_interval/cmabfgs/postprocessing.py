@@ -85,7 +85,7 @@ class CMABFGSPostprocessor:
 
         series = [cmaes_series["best_cmaes"]] + [s for s in bfgs_curves if not s.empty]
 
-        curve = pd.concat(series).sort_index().cummin()
+        curve = pd.concat(series).sort_index().cummin().groupby(level=0).min()
         return curve
 
     def get_span_dict(self, data: pd.DataFrame):
@@ -274,7 +274,7 @@ if __name__ == "__main__":
             CMABFGSExperimentConfig(
                 10,
                 ANY_INT,
-                ObjectiveChoice.ELLIPTIC,
+                ObjectiveChoice.CEC1,
                 OptimumPosition.MIDDLE,
                 False,
                 HessianNormalization.UNIT_DIM,
