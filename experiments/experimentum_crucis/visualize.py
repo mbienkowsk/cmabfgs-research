@@ -4,6 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from lib.funs import elliptic_hess_for_dim
 
@@ -24,6 +25,9 @@ def get_eigv_ratio_statistics(arr: np.ndarray):
     )
 
 
+MANUSCRIPT = True  # hide titles for the manuscript
+
+
 @contextmanager
 def wrap_plot(title: str, dim: int, ylabel: str, save_to: Path):
     fig, ax = plt.subplots(figsize=(16, 9))
@@ -35,7 +39,8 @@ def wrap_plot(title: str, dim: int, ylabel: str, save_to: Path):
     yield
     plt.xlabel("liczba ewaluacji f.celu")
     secax.set_xlabel("Liczba iteracji algorytmu")
-    plt.title(title + f" ({dim} wymiarów)")
+    if not MANUSCRIPT:
+        plt.title(title + f" ({dim} wymiarów)")
     plt.grid()
     plt.savefig(save_to, dpi=300, bbox_inches="tight")
 
@@ -44,7 +49,19 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ratio_stats = df["cov_mat_eigv"].apply(get_eigv_ratio_statistics)
     with_ratio_stats = pd.concat((df, ratio_stats), axis=1)
 
-    averaged = with_ratio_stats.drop(columns=["run_id"]).groupby(level=0).mean()
+    index_superset = np.unique(
+        np.concatenate(  # pyright: ignore[reportCallIssue]
+            [frame.index.values for _, frame in with_ratio_stats.groupby("run_id")]  # pyright: ignore[reportArgumentType]
+        )
+    )
+    reindexed = [
+        frame.reindex(index_superset).ffill().drop(columns=["run_id"])
+        for _, frame in with_ratio_stats.groupby("run_id")
+    ]
+    # ensure no missing values, the indices should match here besides some instances ending early
+    assert all(r.notna().all().all() for r in reindexed)  # pyright: ignore[reportAttributeAccessIssue]
+
+    averaged = pd.concat(reindexed).groupby(level=0).mean()
     ndim = len(averaged.iloc[0]["cov_mat_eigv"])
 
     with wrap_plot(
@@ -183,7 +200,7 @@ if __name__ == "__main__":
     for dir in (get_plot_directory(dim) for dim in DIMS):
         dir.mkdir(parents=True, exist_ok=True)
 
-    for dim in DIMS:
+    for dim in tqdm(DIMS, "Processing dimension sets...", total=len(DIMS)):
         RESULT_PATH = (
             Path(__file__).parent
             / "results"
