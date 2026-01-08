@@ -167,3 +167,12 @@ class CMAESIteration(Metric):
 
     def collect_cmaes(self, state: CMAESState):
         return state.num_evaluations // self.popsize
+
+
+@dataclass
+class CMAESPopulation(Metric):
+    def key(self):
+        return "population"
+
+    def collect_cmaes(self, state: CMAESState):
+        return state.population

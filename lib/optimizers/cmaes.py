@@ -23,6 +23,7 @@ class CMAESState:
     sigma: float = 1
     mean: np.ndarray = field(default_factory=lambda: np.array([]))
     population_evaluations: list[float] = field(default_factory=list)
+    population: list[np.ndarray] = field(default_factory=list)
 
     @property
     def num_evaluations(self):
@@ -67,8 +68,10 @@ class CMAES(Optimizer):
     def wrapped_objective(self):
         return self.state.counter
 
-    def update_state(self, population_evaluations: list[float]):
-        self.state.population_evaluations = population_evaluations
+    def update_state(self, solutions: list[tuple[np.ndarray, float]]):
+        x, y = zip(*solutions)
+        self.state.population = list(x)
+        self.state.population_evaluations = list(y)
         self.state.mean = self.mean
         self.state.covariance_matrix = self.inner._C
         self.state.sigma = self.inner._sigma
@@ -90,15 +93,12 @@ class CMAES(Optimizer):
             repaired = repair_by_reflection(x, self.bounds)
             solutions.append((repaired, self.wrapped_objective(repaired)))
 
+        self.update_state(deepcopy(solutions))
         self.inner.tell(solutions)
-        self.update_state([sol[1] for sol in solutions])
-
-        return deepcopy(solutions)
 
     def step(self):
-        solutions = self._step()
+        self._step()
         self.callback(self.state, self.identifier)
-        return solutions
 
     @override
     def optimize(self):

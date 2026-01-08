@@ -60,8 +60,8 @@ class HessianNormalization(Enum):
 class OptimumPosition(Enum):
     MIDDLE = "middle"
     CORNER = "corner"
-    OUTSIDE_CORNER = "outside_corner"
     CORNER_NEAR = "corner_near"
+    OUTSIDE_CORNER = "outside_corner"
 
     def get_bounds(self):
         match self:
