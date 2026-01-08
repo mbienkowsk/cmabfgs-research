@@ -9,6 +9,7 @@ dependencies = [
     "cmaes>=0.11.1",
     "debugpy>=1.8.15",
     "ipython>=9.4.0",
+    "joblib>=1.5.3",
     "loguru>=0.7.3",
     "matplotlib>=3.10.3",
     "numba>=0.61.2",
@@ -21,6 +22,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "setuptools>=80.9.0",
     "sympy>=1.14.0",
+    "tqdm>=4.67.1",
 ]
 
 [tool.uv.sources]

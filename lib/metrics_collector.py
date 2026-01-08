@@ -17,7 +17,7 @@ class HasCounter(Protocol):
 class MetricsCollector:
     metrics: Sequence[Metric]
     run_id: int
-    data: pd.DataFrame = field(default_factory=pd.DataFrame)
+    data: pd.DataFrame = field(default_factory=pd.DataFrame, init=False)
     every_n_calls: int = 1
     times_called: int = 0
 

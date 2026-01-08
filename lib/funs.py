@@ -11,7 +11,7 @@ from lib.cec import get_cec2017_for_dim
 @dataclass
 class OptFun:
     fun: Callable
-    grad: Callable
+    grad: Callable | None
     name: str
     optimum: int
 
@@ -52,6 +52,23 @@ def elliptic_hess_for_dim(dim: int):
 Elliptic = OptFun(elliptic, elliptic_grad, "Elliptic", 0)
 
 
+@numba.njit
+def rastrigin(x, A=2.0):
+    canonical_bound = 5.12
+    external_bound = 100.0
+    scale = canonical_bound / external_bound
+    y = x * scale
+
+    n = y.size
+    result = A * n
+    for i in range(n):
+        result += y[i] * y[i] - A * np.cos(2.0 * np.pi * y[i])
+    return result
+
+
+Rastrigin = OptFun(rastrigin, None, "Rastrigin", 0)
+
+
 def get_function_by_name(
     name: str, dim: int = 10, with_optimum: bool = False
 ) -> Callable | tuple[Callable, int]:
@@ -64,6 +81,8 @@ def get_function_by_name(
 
     if name == "Elliptic":
         return (Elliptic.fun, 0) if with_optimum else Elliptic.fun
+    if name == "Rastrigin":
+        return (Rastrigin.fun, 0) if with_optimum else Rastrigin.fun
     elif name == "Square":
         return (lambda x: np.sum(x**2), 0) if with_optimum else lambda x: np.sum(x**2)
     elif name.startswith("CEC"):

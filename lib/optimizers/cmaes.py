@@ -41,7 +41,7 @@ class CMAES(Optimizer):
         popsize: int,
         seed: int,
         stopper: CMAESEarlyStopping,
-        callback: "MetricsCollector",
+        callbacks: list["MetricsCollector"],
         bounds: tuple[float, float],
         sigma: float = 1,
         repair_method: RepairMethod = RepairMethod.REFLECT,
@@ -53,7 +53,13 @@ class CMAES(Optimizer):
         self.state = CMAESState(
             covariance_matrix=self.inner._C, counter=fun, popsize=popsize
         )
-        self.callback = callback
+
+        def combined_callback(state: CMAESState, identifier):
+            for cb in callbacks:
+                cb(state, identifier)
+
+        self.callback = combined_callback
+
         self.bounds = bounds
         self.identifier = identifier
 

@@ -2,14 +2,14 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, cast
+from typing import Callable, Hashable, cast
 
 import numpy as np
 import pandas as pd
 from loguru import logger
 from sympy import prime
 
-from lib.bound_handling import check_bounds
+from lib.bound_handling import OutOfBoundsError, check_bounds
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -39,9 +39,12 @@ class EvalCounter:
 
     fun: Callable
     num_evaluations: int = field(default=0)
-    best_solutions: list[tuple[np.ndarray | None, float]] = field(default_factory=list)
+    best_solutions: list[tuple[np.ndarray | None, float]] = field(
+        default_factory=list, init=False
+    )
     bounds: tuple[float, float] | None = None
     identifier: str = ""
+    kill_outside_bounds: bool = False
 
     def __call__(self, x):
         self.num_evaluations += 1
@@ -50,12 +53,18 @@ class EvalCounter:
         xbest, ybest = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
+            if self.kill_outside_bounds:
+                raise OutOfBoundsError(
+                    f"{self.identifier}: Evaluation out of bounds, stopping optimization after {self.num_evaluations} evals"
+                )
+
             msg = (
                 "Out of bounds evaluation detected. Refusing to update best_solutions."
             )
             if self.identifier:
                 msg = f"{self.identifier}: {msg}"
             logger.warning(msg)
+
             self.best_solutions.append((xbest, ybest))
             return y
 
@@ -130,3 +139,46 @@ def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):
         (rng.random(dimensions) - 0.5) * 2 * bounds,  # pyright: ignore[reportArgumentType]
     )
     return x, seed
+
+
+def compress_and_save(df: pd.DataFrame, path: Path):
+    df.to_parquet(path, index=True, compression="brotli")
+
+
+def summarize_data(df: pd.DataFrame):
+    print("Data Summary")
+    print("=" * 40)
+
+    def is_hashable_series(s):
+        return s.dropna().apply(lambda x: isinstance(x, Hashable)).all()
+
+    hashable_cols = [c for c in df.columns if is_hashable_series(df[c])]  # pyright: ignore[reportGeneralTypeIssues]
+
+    unique_counts = df[hashable_cols].nunique(dropna=True)
+
+    summary = pd.DataFrame(
+        {
+            "dtype": df.dtypes,
+            "non_null": df.count(),
+            "nulls": df.isna().sum(),
+        }
+    )
+
+    summary["unique"] = np.nan
+    summary.loc[hashable_cols, "unique"] = unique_counts
+
+    num_cols = df.select_dtypes(include="number")
+    if not num_cols.empty:
+        summary.loc[num_cols.columns, "min"] = num_cols.min()
+        summary.loc[num_cols.columns, "max"] = num_cols.max()
+        summary.loc[num_cols.columns, "mean"] = num_cols.mean()
+
+    print(summary)
+
+    print("\nHead")
+    print("-" * 40)
+    print(df.head())
+
+    print("\nTail")
+    print("-" * 40)
+    print(df.tail())
