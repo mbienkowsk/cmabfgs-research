@@ -91,12 +91,6 @@ if __name__ == "__main__":
     g.fig.subplots_adjust(top=0.88)
     g.fig.set_size_inches(12, 12)
     g.set_titles("{col_name}")
-    g.fig.suptitle(
-        "Warianty ograniczeń kostkowych zastosowanych w badaniu",
-        fontsize=14,
-        y=0.995,
-    )
-    g.fig.subplots_adjust(top=0.90)
 
     plt.savefig(
         Path(__file__).parent / "plots" / "optimum_positions.png",
