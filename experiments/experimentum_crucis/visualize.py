@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -25,24 +26,38 @@ def get_eigv_ratio_statistics(arr: np.ndarray):
     )
 
 
-MANUSCRIPT = True  # hide titles for the manuscript
+MANUSCRIPT = True  # hide titles and make text bigger for the manuscript
+
+if MANUSCRIPT:
+    mpl.rcParams["font.size"] = 24
+    mpl.rcParams["font.family"] = "serif"
+    mpl.rcParams["lines.linewidth"] = 3
 
 
 @contextmanager
 def wrap_plot(title: str, dim: int, ylabel: str, save_to: Path):
     fig, ax = plt.subplots(figsize=(16, 9))
-    secax = ax.secondary_xaxis(
-        "bottom",
-        functions=(lambda x: x / (4 * dim), lambda x: x * 4 * dim),  # pyright: ignore[reportOperatorIssue]
+
+    ax.ticklabel_format(
+        axis="x",
+        style="sci",
+        scilimits=(0, 0),
+        useMathText=True,
     )
-    secax.spines["bottom"].set_position(("outward", 40))
-    yield
-    plt.xlabel("liczba ewaluacji f.celu")
-    secax.set_xlabel("Liczba iteracji algorytmu")
+
+    ax.set_xlabel("Liczba iteracji algorytmu")
+    ax.set_ylabel(ylabel)
+
     if not MANUSCRIPT:
-        plt.title(title + f" ({dim} wymiarów)")
-    plt.grid()
+        ax.set_title(f"{title} ({dim} wymiarów)")
+    else:
+        ax.set_title(f"D={dim}")
+
+    yield
+    ax.grid()
     plt.savefig(save_to, dpi=300, bbox_inches="tight")
+    # plt.show()
+    plt.close()
 
 
 def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
@@ -70,7 +85,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
         "f(xbest)",
         save_dir / "convergence_curve.png",
     ):
-        plt.semilogy(averaged.index, averaged["best"])
+        plt.semilogy(averaged["iteration"], averaged["best"])
 
     with wrap_plot(
         "Wartości własne macierzy kowariancji",
@@ -80,17 +95,18 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ):
         eigenvalue_array = np.array(list(averaged["cov_mat_eigv"]))
         for i in range(ndim):
-            plt.semilogy(averaged.index, eigenvalue_array[:, i])
+            plt.semilogy(averaged["iteration"], eigenvalue_array[:, i])
 
     with wrap_plot(
         "długości półosi rozkładu populacji",
         dim,
-        "sqrt(\\lambda_i) * \\sigma",
+        "$\\sqrt{(\\lambda_i)\\sigma}$",
         save_dir / "axis_lengths.png",
     ):
         for i in range(ndim):
             plt.semilogy(
-                averaged.index, np.sqrt(eigenvalue_array[:, i]) * averaged["sigma"]
+                averaged["iteration"],
+                np.sqrt(eigenvalue_array[:, i]) * averaged["sigma"],
             )
 
     with wrap_plot(
@@ -101,7 +117,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ):
         for i in range(ndim):
             plt.semilogy(
-                averaged.index,
+                averaged["iteration"],
                 np.sqrt(eigenvalue_array[:, ndim - 1] / eigenvalue_array[:, 0]),
             )
 
@@ -113,7 +129,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ):
         for i in range(ndim):
             plt.semilogy(
-                averaged.index, eigenvalue_array[:, i] * averaged["sigma"] ** 2
+                averaged["iteration"], eigenvalue_array[:, i] * averaged["sigma"] ** 2
             )
 
     actual_eigenvalues, _ = np.linalg.eigh(elliptic_hess_for_dim(ndim))
@@ -128,8 +144,8 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ):
         for i in range(len(actual_ratios)):
             plt.semilogy(
-                averaged.index,
-                np.full((len(averaged.index)), actual_ratios[i]),
+                averaged["iteration"],
+                np.full((len(averaged["iteration"])), actual_ratios[i]),
                 label=f"actual ratio {i + 1}",
                 linestyle="dashed",
             )
@@ -137,24 +153,26 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
                 averaged["eigv_ratios"].apply(lambda x: x[i]),  # pyright: ignore[reportAttributeAccessIssue]
                 label=f"estimated ratio {i + 1}",
             )
-        plt.legend()
+        if not MANUSCRIPT:
+            plt.legend()
 
     with wrap_plot(
         "Porównanie statystyk ilorazów kolejnych wartości własnych ($\\lambda[1:] / \\lambda[:-1]$)",
         dim,
-        "$lambda[i] / \\ labmda[i-1]$",
+        "$\\lambda[i] / \\lambda[i-1]$",
         save_dir / "consecutive_ratios_stats.png",
     ):
         plt.semilogy(averaged["eigv_ratios_mean"], label="mean")
         plt.semilogy(averaged["eigv_ratios_25th"], label="25. centyl")
         plt.semilogy(averaged["eigv_ratios_75th"], label="75. centyl")
         plt.semilogy(
-            averaged.index,
-            np.full((len(averaged.index)), actual_ratio_average),
+            averaged["iteration"],
+            np.full((len(averaged["iteration"])), actual_ratio_average),
             label="actual ratio mean",
             linestyle="dashed",
         )
-        plt.legend()
+        if not MANUSCRIPT:
+            plt.legend()
 
     averaged["corresp_eig_ratios"] = averaged["cov_mat_eigv"].apply(
         lambda eig: np.divide(eig, actual_eigenvalues)
@@ -163,7 +181,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     with wrap_plot(
         "Porównanie ilorazów odpowiadających sobie wartości własnych C i H_inv",
         dim,
-        "$\\lambda_{C}[i] / \\ lambda_{H_inv}[i]$",
+        "$\\lambda_{C}[i] / \\ lambda_{H_{inv}}[i]$",
         save_dir / "corresp_eig_ratios.png",
     ):
         for i in range(len(actual_eigenvalues)):
@@ -171,12 +189,13 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
                 averaged["corresp_eig_ratios"].apply(lambda x: x[i]),  # pyright: ignore[reportAttributeAccessIssue]
                 label=f"ratio for $\\lambda_{i + 1}$",
             )
-        plt.legend()
+        if not MANUSCRIPT:
+            plt.legend()
 
     with wrap_plot(
         "Zagregowane dane dotyczące ilorazów odpowiadających sobie wartości własnych C i H_inv",
         dim,
-        "$\\lambda_{C}[i] / \\lambda_{H_inv}[i]$",
+        "$\\lambda_{C}[i] / \\lambda_{H_{inv}}[i]$",
         save_dir / "corresp_eig_ratios_stats.png",
     ):
         ratios_df = pd.DataFrame(
@@ -188,11 +207,12 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
         q25 = ratios_df.quantile(0.25, axis=1)
         q75 = ratios_df.quantile(0.75, axis=1)
 
-        plt.semilogy(mean.index, mean, label="mean")
-        plt.semilogy(q25.index, q25, label="25. centyl")
-        plt.semilogy(q75.index, q75, label="75. centyl")
+        plt.semilogy(averaged["iteration"], mean, label="mean")
+        plt.semilogy(averaged["iteration"], q25, label="25. centyl")
+        plt.semilogy(averaged["iteration"], q75, label="75. centyl")
 
-        plt.legend()
+        if not MANUSCRIPT:
+            plt.legend()
 
 
 if __name__ == "__main__":
@@ -208,5 +228,5 @@ if __name__ == "__main__":
             / f"elliptic_d{dim}.parquet"
         )
         df = pd.read_parquet(RESULT_PATH)
-        df["iteration"] = df.index // 4 * dim
-        visualize_results(pd.read_parquet(RESULT_PATH), dim, get_plot_directory(dim))
+        df["iteration"] = df.index // (4 * dim)
+        visualize_results(df, dim, get_plot_directory(dim))
