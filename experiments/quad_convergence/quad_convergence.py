@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
+from lib.enums import HessianNormalization
 from lib.funs import elliptic_hess_for_dim, get_function_by_name
 from lib.metrics import BestSoFar, BestXSoFar, CovarianceMatrix, Mean
 from lib.metrics_collector import MetricsCollector
@@ -30,6 +31,7 @@ BOUNDS = 100
 OBJECTIVE_NAME = "Elliptic"
 KILL_OUTSIDE_BOUNDS = False
 BFGS_BOUNDS = (-100, 100) if KILL_OUTSIDE_BOUNDS else (-1e9, 1e9)
+NORMALIZATION_VARIANTS = tuple(HessianNormalization)
 
 if DEBUG:
     DIMENSIONS = 10
@@ -157,6 +159,7 @@ def run_normalized_and_non_normalized_bfgs(
     collector: MetricsCollector,
     hess_inv: np.ndarray,
     identifier_base: str,
+    variants: tuple[HessianNormalization, ...] = NORMALIZATION_VARIANTS,
 ):
     run_bfgs(
         x0,
@@ -164,12 +167,14 @@ def run_normalized_and_non_normalized_bfgs(
         make_symmetrical(hess_inv),
         identifier_base,
     )
-    run_bfgs(
-        x0,
-        collector,
-        make_symmetrical(normalize_to_dim(hess_inv, DIMENSIONS)),
-        f"{identifier_base}_normalized",
-    )
+
+    for variant in variants:
+        run_bfgs(
+            x0,
+            collector,
+            variant.normalize_and_make_symmetrical(hess_inv),
+            f"{identifier_base}_{variant.value}",
+        )
 
 
 def run_bfgs_with_predefined_x0s(run_id: int, df: pd.DataFrame, x0s: np.ndarray):
