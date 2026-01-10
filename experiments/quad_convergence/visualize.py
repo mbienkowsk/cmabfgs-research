@@ -1,11 +1,15 @@
+import os
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 from typing import Literal, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from lib.enums import HessianNormalization
 from lib.plotting_util import (
@@ -91,7 +95,7 @@ class BFGSAccelerationPlotter:
         if not cols:
             all_iters = set(extract_iterations_from_column(col) for col in self.df)
             raise ValueError(
-                f"No BFGS preconditioned with the matrix for this iteration. Possible values: {all_iters}"
+                f"No BFGS preconditioned with the matrix for input {iter}. Possible values: {all_iters}"
             )
         return cast(pd.DataFrame, self.df[cols])
 
@@ -158,7 +162,33 @@ class BFGSAccelerationPlotter:
         else:
             plt.show()
 
+    def draw_all_by_norm(self):
+        for norm in HessianNormalization:
+            self.plot_comparison_by_iterations(norm)  # pyright: ignore[reportArgumentType]
+
+
+def run_case(dim, x0_mode):
+    BFGSAccelerationPlotter(
+        dimensions=dim,
+        x0_mode=x0_mode,  # pyright: ignore[reportArgumentType]
+        manuscript_version=True,
+        save_to_disk=True,
+    ).draw_all_by_norm()
+
 
 if __name__ == "__main__":
-    plotter = BFGSAccelerationPlotter(10, "random", save_to_disk=False)
-    plotter.plot_comparison_by_normalization_method("inv_hess")
+    debug = bool(os.getenv("DEBUG", ""))
+    print(f"Debug mode: {debug}")
+    if debug:
+        plotter = BFGSAccelerationPlotter(10, "random", save_to_disk=True)
+        plotter.plot_comparison_by_normalization_method("inv_hess")
+    else:
+        DIMS = [10, 20, 50, 100]
+        X_0_MODES = ["random", "inherited"]
+
+        pairs = list(product(DIMS, X_0_MODES))
+
+        Parallel(n_jobs=-1)(
+            delayed(run_case)(dim, x0_mode)
+            for dim, x0_mode in tqdm(pairs, desc="Processing dimension*x0_mode sets...")
+        )
