@@ -182,3 +182,7 @@ def summarize_data(df: pd.DataFrame):
     print("\nTail")
     print("-" * 40)
     print(df.tail())
+
+
+def make_symmetrical(arr: np.ndarray):
+    return arr * 0.5 + arr.T * 0.5

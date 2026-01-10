@@ -20,6 +20,7 @@ from lib.util import (
     assert_all_non_increasing,
     assert_non_increasing,
     get_x0_and_seed_for_run_id,
+    make_symmetrical,
 )
 
 LOG_LEVEL = "ERROR"
@@ -109,12 +110,12 @@ def run_cmaes(run_id: int):
     return df.assign(iteration=df.index // POPULATION_SIZE)
 
 
-def make_symmetrical(mat: np.ndarray):
-    return mat * 0.5 + mat.T * 0.5
+def normalize_to_unit(mat: np.ndarray):
+    return mat / np.linalg.norm(mat)
 
 
 def normalize_to_dim(mat: np.ndarray, dim: int):
-    return mat / np.linalg.norm(mat) * dim
+    return normalize_to_unit(mat) * dim
 
 
 def single_run(

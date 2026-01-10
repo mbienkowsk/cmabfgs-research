@@ -15,10 +15,10 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
     CMABFGSExperimentConfig,
 )
 from experiments.find_switch_interval.common import (
-    HessianNormalization,
     ObjectiveChoice,
     OptimumPosition,
 )
+from lib.enums import HessianNormalization
 from lib.serde import aggregate_dataframes
 from lib.util import compress_and_save, summarize_data
 
@@ -141,7 +141,7 @@ class CMABFGSPostprocessor:
     def run(self, n_jobs: int = -1):
         try:
             raw = pd.read_parquet(self.input_file)
-        except Exception as e:
+        except Exception:
             logger.error(f"MISSING RUN FILE FOR CONFIGURATION {self.config}")
             return
         only_cmaes = aggregate_dataframes(

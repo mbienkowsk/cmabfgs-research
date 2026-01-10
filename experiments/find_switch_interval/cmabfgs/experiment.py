@@ -14,10 +14,10 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 )
 from experiments.find_switch_interval.common import (
     ExperimentBase,
-    HessianNormalization,
     ObjectiveChoice,
     OptimumPosition,
 )
+from lib.enums import HessianNormalization
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.random import IndividualGenerator

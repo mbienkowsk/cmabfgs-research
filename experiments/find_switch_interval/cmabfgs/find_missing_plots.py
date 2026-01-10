@@ -9,10 +9,10 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 )
 from experiments.find_switch_interval.cmabfgs.postprocessing import CMABFGSPostprocessor
 from experiments.find_switch_interval.common import (
-    HessianNormalization,
     ObjectiveChoice,
     OptimumPosition,
 )
+from lib.enums import HessianNormalization
 
 ANY_INT = 0
 

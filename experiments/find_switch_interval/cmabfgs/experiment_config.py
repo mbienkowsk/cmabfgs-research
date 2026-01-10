@@ -5,8 +5,8 @@ from typing import override
 
 from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
-    HessianNormalization,
 )
+from lib.enums import HessianNormalization
 
 
 @dataclass
