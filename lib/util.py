@@ -186,3 +186,14 @@ def summarize_data(df: pd.DataFrame):
 
 def make_symmetrical(arr: np.ndarray):
     return arr * 0.5 + arr.T * 0.5
+
+
+def trim_constant_tail(
+    s: pd.Series, epsilon: float = 1e-11, leave_first_n: int = 3
+) -> pd.Series:
+    """Trims an (almost) constant tail from the dataframe based on the given epsilon."""
+    v = s.values
+    idx = (abs(v - v[-1]) >= epsilon).nonzero()[0]
+    if len(idx) == 0:
+        return s.iloc[:1]
+    return s.iloc[: idx[-1] + 2 + leave_first_n]
