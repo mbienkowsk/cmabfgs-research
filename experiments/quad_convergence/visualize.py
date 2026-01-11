@@ -59,16 +59,20 @@ def filter_for_preconditioning(df: pd.DataFrame, prec: Preconditioning) -> pd.Da
         return df[[col for col in df.columns if prec in col]]  # pyright: ignore[reportReturnType]
 
 
+def remove_non_cmaes_preconditioning_variants(df: pd.DataFrame) -> pd.DataFrame:
+    return df[
+        [col for col in df.columns if "identity" not in col and "inv_hess" not in col]
+    ]  # pyright: ignore[reportReturnType]
+
+
 @dataclass
 class BFGSAccelerationPlotter:
     dimensions: int
     x0_mode: Literal["random", "inherited"]
-    manuscript_version: bool = True
     save_to_disk: bool = True
 
     def __post_init__(self):
-        if self.manuscript_version:
-            configure_mpl_for_manuscript()
+        configure_mpl_for_manuscript()
 
         if not self.input_file_path.exists():
             raise FileNotFoundError(f"Input file not found: {self.input_file_path}")
@@ -118,7 +122,9 @@ class BFGSAccelerationPlotter:
         ax.set_yscale("log")
         plt.tight_layout()
 
-    def plot_comparison_for_norm(self, norm: HessianNormalization, data: pd.DataFrame):
+    def plot_comparison_for_norm(
+        self, norm: HessianNormalization, data: pd.DataFrame, filename_suffix: str = ""
+    ):
         def to_label(col: str):
             if (iters := extract_iterations_from_column(col)) is not None:
                 return str(iters)
@@ -129,8 +135,11 @@ class BFGSAccelerationPlotter:
             plt.title(norm.to_plot_label())
 
         if self.save_to_disk:
+            filename = f"by_iteration_{norm.value}"
+            if filename_suffix:
+                filename += f"_{filename_suffix}"
             plt.savefig(
-                self.output_directory / f"by_iteration_{norm.value}.png",
+                self.output_directory / f"{filename}.png",
                 dpi=300,
                 bbox_inches="tight",
             )
@@ -142,6 +151,7 @@ class BFGSAccelerationPlotter:
         df: pd.DataFrame,
         preconditioning: int | Literal["identity", "inv_hess"],
         norm_variants: list[HessianNormalization] | None = None,
+        filename_suffix: str = "",
     ):
         if norm_variants is None:
             norm_variants = HessianNormalization.non_degenerate_choices()
@@ -176,8 +186,11 @@ class BFGSAccelerationPlotter:
         plt.title(f"d={self.dimensions}, $H_{{inv0}}$={prec_for_title}")
 
         if self.save_to_disk:
+            filename = f"by_norm_{preconditioning}"
+            if filename_suffix:
+                filename += f"_{filename_suffix}"
             plt.savefig(
-                self.output_directory / f"by_norm_{preconditioning}.png",
+                self.output_directory / f"{filename}.png",
                 dpi=300,
                 bbox_inches="tight",
             )
@@ -201,16 +214,34 @@ def plot_all_random_x0(dim):
     plotter = BFGSAccelerationPlotter(
         dimensions=dim,
         x0_mode="random",
-        manuscript_version=True,
         save_to_disk=True,
     )
     for norm in HessianNormalization:
         data = filter_for_normalization_method(plotter.df, norm)
         plotter.plot_comparison_for_norm(norm, data)
-
     for prec in plotter.get_all_preconditioning_variants():
         data = filter_for_preconditioning(plotter.df, prec)
         plotter.plot_comparison_for_preconditioning(data, prec)
+
+
+def plot_all_inherited_x0(dim):
+    plotter = BFGSAccelerationPlotter(
+        dimensions=dim,
+        x0_mode="inherited",
+        save_to_disk=True,
+    )
+    for norm in HessianNormalization:
+        data = filter_for_normalization_method(plotter.df, norm)
+        data = remove_non_cmaes_preconditioning_variants(data)
+        plotter.plot_comparison_for_norm(
+            norm, data, filename_suffix="only_cmaes_preconditioning"
+        )
+    for prec in plotter.get_all_preconditioning_variants():
+        data = filter_for_preconditioning(plotter.df, prec)
+        data = remove_non_cmaes_preconditioning_variants(data)
+        plotter.plot_comparison_for_preconditioning(
+            data, prec, filename_suffix="only_cmaes_preconditioning"
+        )
 
 
 if __name__ == "__main__":
@@ -222,7 +253,12 @@ if __name__ == "__main__":
     else:
         DIMS = [10, 20, 50, 100]
 
+        # Parallel(n_jobs=-1)(
+        #     delayed(plot_all_random_x0)(dim)
+        #     for dim in tqdm(DIMS, desc="Processing dimension*x0_mode sets...")
+        # )
+        #
         Parallel(n_jobs=-1)(
-            delayed(plot_all_random_x0)(dim)
+            delayed(plot_all_inherited_x0)(dim)
             for dim in tqdm(DIMS, desc="Processing dimension*x0_mode sets...")
         )
