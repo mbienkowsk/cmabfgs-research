@@ -40,3 +40,11 @@ class HessianNormalization(Enum):
 
     def normalize_and_make_symmetrical(self, mat: np.ndarray):
         return make_symmetrical(self.normalize(mat))
+
+    @staticmethod
+    def non_degenerate_choices():
+        return [
+            norm
+            for norm in HessianNormalization
+            if norm != HessianNormalization.UNIT_DIM
+        ]

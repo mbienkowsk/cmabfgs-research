@@ -15,6 +15,8 @@ def configure_mpl_for_manuscript():
     mpl.rcParams["font.family"] = "serif"
     mpl.rcParams["mathtext.fontset"] = "cm"
     mpl.rcParams["lines.linewidth"] = 3
+    colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
+    plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
 def set_log_x_labels(ax: plt.Axes):

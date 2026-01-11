@@ -122,6 +122,7 @@ class BFGSAccelerationPlotter:
 
         with self.new_ax() as ax:
             plot_with_legend_function(data, ax, to_label)
+            plt.title(norm.to_plot_label())
 
         if self.save_to_disk:
             plt.savefig(
