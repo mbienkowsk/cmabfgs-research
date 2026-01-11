@@ -2,7 +2,6 @@ import os
 import re
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Callable
 
 import pandas as pd
 from joblib import Parallel, delayed
@@ -213,44 +212,61 @@ class CMABFGSPostprocessor:
         return pd.concat(results, ignore_index=True)
 
 
-def process_config(
-    dim: int, obj: Callable, op: OptimumPosition, hess_norm: HessianNormalization
-):
-    config = CMABFGSExperimentConfig(dim, ANY_INT, obj, op, False, hess_norm)  # pyright: ignore[reportArgumentType]
+def process_config(config: CMABFGSExperimentConfig):
     processor = CMABFGSPostprocessor(config)
-
     processor.run()
 
 
 if __name__ == "__main__":
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
+
     if debug:
-        processor = CMABFGSPostprocessor(
-            CMABFGSExperimentConfig(
-                100,
-                ANY_INT,
-                ObjectiveChoice.CEC1,
-                OptimumPosition.MIDDLE,
-                True,
-                HessianNormalization.UNIT,
-            )
+        config = CMABFGSExperimentConfig(
+            100,
+            ANY_INT,
+            ObjectiveChoice.CEC1,
+            OptimumPosition.MIDDLE,
+            True,
+            HessianNormalization.UNIT,
         )
-        processor.run()
+        CMABFGSPostprocessor(config).run()
+
     else:
-        dims = [10, 20, 50, 100]
-        objectives = [getattr(ObjectiveChoice, f"CEC{i}") for i in range(1, 31)]
-        options = [
+        optimum_positions = [
             OptimumPosition.MIDDLE,
         ]
+
         hess_norms = [
             HessianNormalization.UNIT_DIM,
             HessianNormalization.UNIT,
         ]
 
-        Parallel(n_jobs=-1, backend="loky")(
-            delayed(process_config)(dim, obj, op, hess_norm)
-            for dim, obj, op, hess_norm in product(
-                dims, objectives, options, hess_norms
+        # CEC configurations
+        cec_dims = [10, 30, 50, 100]
+        cec_objectives = [getattr(ObjectiveChoice, f"CEC{i}") for i in range(1, 31)]
+        cec_configurations = [
+            CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
+            for d, obj, opt, hess_norm in product(
+                cec_dims, cec_objectives, optimum_positions, hess_norms
             )
+        ]
+
+        # Control configurations
+        control_dims = [10, 20, 50, 100]
+        control_objectives = [
+            ObjectiveChoice.ELLIPTIC,
+            ObjectiveChoice.RASTRIGIN,
+        ]
+        control_configurations = [
+            CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
+            for d, obj, opt, hess_norm in product(
+                control_dims, control_objectives, optimum_positions, hess_norms
+            )
+        ]
+
+        all_configurations = cec_configurations + control_configurations
+
+        Parallel(n_jobs=-1, backend="loky")(
+            delayed(process_config)(config) for config in all_configurations
         )
