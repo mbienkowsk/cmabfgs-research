@@ -123,7 +123,7 @@ if __name__ == "__main__":
         CMABFGSPlotter(config, save_to_disk=False).run()
 
     else:
-        optimum_positions = [
+        cec_optimum_positions = [
             OptimumPosition.MIDDLE,
         ]
         hess_norms = [
@@ -136,10 +136,11 @@ if __name__ == "__main__":
         cec_configurations = [
             CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
             for d, obj, opt, hess_norm in product(
-                cec_dims, cec_objectives, optimum_positions, hess_norms
+                cec_dims, cec_objectives, cec_optimum_positions, hess_norms
             )
         ]
 
+        control_optimum_positions = list(OptimumPosition)
         control_dims = [10, 20, 50, 100]
         control_objectives = [
             ObjectiveChoice.ELLIPTIC,
@@ -148,10 +149,11 @@ if __name__ == "__main__":
         control_configurations = [
             CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
             for d, obj, opt, hess_norm in product(
-                control_dims, control_objectives, optimum_positions, hess_norms
+                control_dims, control_objectives, control_optimum_positions, hess_norms
             )
         ]
-        all_configurations = cec_configurations + control_configurations
+        # all_configurations = cec_configurations + control_configurations
+        all_configurations = control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
             delayed(plot_config)(config) for config in all_configurations

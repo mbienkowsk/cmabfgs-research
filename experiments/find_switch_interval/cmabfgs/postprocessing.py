@@ -233,26 +233,26 @@ if __name__ == "__main__":
         CMABFGSPostprocessor(config).run()
 
     else:
-        optimum_positions = [
-            OptimumPosition.MIDDLE,
-        ]
-
         hess_norms = [
             HessianNormalization.UNIT_DIM,
             HessianNormalization.UNIT,
         ]
 
         # CEC configurations
+        cec_optimum_positions = [
+            OptimumPosition.MIDDLE,
+        ]
         cec_dims = [10, 30, 50, 100]
         cec_objectives = [getattr(ObjectiveChoice, f"CEC{i}") for i in range(1, 31)]
         cec_configurations = [
             CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
             for d, obj, opt, hess_norm in product(
-                cec_dims, cec_objectives, optimum_positions, hess_norms
+                cec_dims, cec_objectives, cec_optimum_positions, hess_norms
             )
         ]
 
         # Control configurations
+        control_optimum_positions = list(OptimumPosition)
         control_dims = [10, 20, 50, 100]
         control_objectives = [
             ObjectiveChoice.ELLIPTIC,
@@ -261,7 +261,7 @@ if __name__ == "__main__":
         control_configurations = [
             CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
             for d, obj, opt, hess_norm in product(
-                control_dims, control_objectives, optimum_positions, hess_norms
+                control_dims, control_objectives, control_optimum_positions, hess_norms
             )
         ]
 
