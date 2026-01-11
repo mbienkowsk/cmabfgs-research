@@ -34,6 +34,31 @@ def extract_normalization_from_column(col: str):
     return None
 
 
+def filter_for_normalization_method(df: pd.DataFrame, norm: HessianNormalization):
+    return cast(
+        pd.DataFrame,
+        df[[col for col in df.columns if col.endswith(norm.value)]],
+    )
+
+
+Preconditioning = int | Literal["identity", "inv_hess"]
+
+
+def filter_for_preconditioning(df: pd.DataFrame, prec: Preconditioning) -> pd.DataFrame:
+    if isinstance(prec, int):
+        cols = [
+            col for col in df.columns if extract_iterations_from_column(col) == prec
+        ]
+        if not cols:
+            all_iters = set(extract_iterations_from_column(col) for col in df)
+            raise ValueError(
+                f"No BFGS preconditioned with the matrix for input {prec}. Possible values: {all_iters}"
+            )
+        return cast(pd.DataFrame, df[cols])
+    else:
+        return df[[col for col in df.columns if prec in col]]  # pyright: ignore[reportReturnType]
+
+
 @dataclass
 class BFGSAccelerationPlotter:
     dimensions: int
@@ -80,25 +105,6 @@ class BFGSAccelerationPlotter:
             / ("random_x0" if self.x0_mode == "random" else "inherited_x0")
         )
 
-    def get_data_for_normalization_method(self, norm: HessianNormalization):
-        return cast(
-            pd.DataFrame,
-            self.df[[col for col in self.df.columns if col.endswith(norm.value)]],
-        )
-
-    def get_data_for_hess_iteration(self, iter: int):
-        cols = [
-            col
-            for col in self.df.columns
-            if extract_iterations_from_column(col) == iter
-        ]
-        if not cols:
-            all_iters = set(extract_iterations_from_column(col) for col in self.df)
-            raise ValueError(
-                f"No BFGS preconditioned with the matrix for input {iter}. Possible values: {all_iters}"
-            )
-        return cast(pd.DataFrame, self.df[cols])
-
     @contextmanager
     def new_ax(self):
         fig, ax = plt.subplots(figsize=(16, 9))
@@ -112,9 +118,7 @@ class BFGSAccelerationPlotter:
         ax.set_yscale("log")
         plt.tight_layout()
 
-    def plot_comparison_for_norm(self, norm: HessianNormalization):
-        data = self.get_data_for_normalization_method(norm)
-
+    def plot_comparison_for_norm(self, norm: HessianNormalization, data: pd.DataFrame):
         def to_label(col: str):
             if (iters := extract_iterations_from_column(col)) is not None:
                 return str(iters)
@@ -135,18 +139,14 @@ class BFGSAccelerationPlotter:
 
     def plot_comparison_for_preconditioning(
         self,
+        df: pd.DataFrame,
         preconditioning: int | Literal["identity", "inv_hess"],
         norm_variants: list[HessianNormalization] | None = None,
     ):
         if norm_variants is None:
             norm_variants = HessianNormalization.non_degenerate_choices()
-        if isinstance(preconditioning, str):
-            data = cast(
-                pd.DataFrame,
-                self.df[[col for col in self.df.columns if preconditioning in col]],
-            )
-        else:
-            data = self.get_data_for_hess_iteration(preconditioning)
+
+        data = filter_for_preconditioning(df, preconditioning)
 
         def to_label(col: str):
             return (
@@ -205,10 +205,12 @@ def plot_all_random_x0(dim):
         save_to_disk=True,
     )
     for norm in HessianNormalization:
-        plotter.plot_comparison_for_norm(norm)
+        data = filter_for_normalization_method(plotter.df, norm)
+        plotter.plot_comparison_for_norm(norm, data)
 
     for prec in plotter.get_all_preconditioning_variants():
-        plotter.plot_comparison_for_preconditioning(prec)
+        data = filter_for_preconditioning(plotter.df, prec)
+        plotter.plot_comparison_for_preconditioning(data, prec)
 
 
 if __name__ == "__main__":
@@ -216,6 +218,7 @@ if __name__ == "__main__":
     print(f"Debug mode: {debug}")
     if debug:
         plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=False)
+        # plotter.plot_comparison_for_norm(HessianNormalization.UNIT)
     else:
         DIMS = [10, 20, 50, 100]
 
