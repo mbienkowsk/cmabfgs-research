@@ -44,6 +44,15 @@ def filter_for_normalization_method(df: pd.DataFrame, norm: HessianNormalization
 Preconditioning = int | Literal["identity", "inv_hess"]
 
 
+def preconditioning_label(preconditioning: Preconditioning) -> str:
+    if isinstance(preconditioning, int):
+        return tex(f"H_{{{preconditioning}}}")
+    elif preconditioning == "identity":
+        return tex("I")
+    else:
+        return tex("H^{-1}")
+
+
 def filter_for_preconditioning(df: pd.DataFrame, prec: Preconditioning) -> pd.DataFrame:
     if isinstance(prec, int):
         cols = [
@@ -122,6 +131,21 @@ class BFGSAccelerationPlotter:
         ax.set_yscale("log")
         plt.tight_layout()
 
+    def finalize_plot(self, base_filename: str, filename_suffix: str):
+        """Resolve filename and save/show based on the configuration"""
+        if self.save_to_disk:
+            filename = base_filename
+            if filename_suffix:
+                filename += f"_{filename_suffix}"
+            plt.savefig(
+                self.output_directory / f"{filename}.png",
+                dpi=300,
+                bbox_inches="tight",
+            )
+        else:
+            plt.show()
+        plt.close()
+
     def plot_comparison_for_norm(
         self, norm: HessianNormalization, data: pd.DataFrame, filename_suffix: str = ""
     ):
@@ -134,17 +158,7 @@ class BFGSAccelerationPlotter:
             plot_with_legend_function(data, ax, to_label)
             plt.title(norm.to_plot_label())
 
-        if self.save_to_disk:
-            filename = f"by_iteration_{norm.value}"
-            if filename_suffix:
-                filename += f"_{filename_suffix}"
-            plt.savefig(
-                self.output_directory / f"{filename}.png",
-                dpi=300,
-                bbox_inches="tight",
-            )
-        else:
-            plt.show()
+        self.finalize_plot(f"by_iteration_{norm.value}", filename_suffix)
 
     def plot_comparison_for_preconditioning(
         self,
@@ -177,25 +191,11 @@ class BFGSAccelerationPlotter:
         with self.new_ax() as ax:
             plot_with_legend_function(data, ax, to_label)  # pyright: ignore[reportArgumentType]
 
-        if isinstance(preconditioning, int):
-            prec_for_title = tex(f"H_{{{preconditioning}}}")
-        elif preconditioning == "identity":
-            prec_for_title = tex("I")
-        else:
-            prec_for_title = tex("H^{-1}")
-        plt.title(f"d={self.dimensions}, $H_{{inv0}}$={prec_for_title}")
+        plt.title(
+            f"$d={self.dimensions}$, $H_{{inv0}}$={preconditioning_label(preconditioning)}"
+        )
 
-        if self.save_to_disk:
-            filename = f"by_norm_{preconditioning}"
-            if filename_suffix:
-                filename += f"_{filename_suffix}"
-            plt.savefig(
-                self.output_directory / f"{filename}.png",
-                dpi=300,
-                bbox_inches="tight",
-            )
-        else:
-            plt.show()
+        self.finalize_plot(f"by_norm_{preconditioning}", filename_suffix)
 
     def get_all_preconditioning_variants(self):
         seen = set()
@@ -208,6 +208,29 @@ class BFGSAccelerationPlotter:
                 seen.add("inv_hess")
 
         return seen
+
+    def plot_comparison_for_preconditioning_from_starting_point(
+        self,
+        data: pd.DataFrame,
+        starting_point: int,
+        norm: HessianNormalization,
+    ):
+        def to_label(col: str):
+            if "identity" in col:
+                return tex("I")
+            elif "inv_hess" in col:
+                return tex("H_{inv}")
+            return tex("C_{" + str(extract_iterations_from_column(col)) + "}")
+
+        data = filter_for_preconditioning(data, starting_point)
+        with self.new_ax() as ax:
+            plot_with_legend_function(data, ax, to_label)
+
+        plt.title(
+            f"$d={self.dimensions}$, $x_0=m_{{{starting_point}}}$, {norm.to_plot_label()}"
+        )
+
+        self.finalize_plot(f"from_position_{starting_point}_{norm.value}", "")
 
 
 def plot_all_random_x0(dim):
@@ -242,6 +265,15 @@ def plot_all_inherited_x0(dim):
         plotter.plot_comparison_for_preconditioning(
             data, prec, filename_suffix="only_cmaes_preconditioning"
         )
+    for prec in plotter.get_all_preconditioning_variants():
+        if isinstance(prec, int):
+            data = filter_for_preconditioning(plotter.df, prec)
+            norm = HessianNormalization.UNIT
+            data = filter_for_normalization_method(data, norm)
+
+            plotter.plot_comparison_for_preconditioning_from_starting_point(
+                data, prec, norm
+            )
 
 
 if __name__ == "__main__":
@@ -253,12 +285,15 @@ if __name__ == "__main__":
     else:
         DIMS = [10, 20, 50, 100]
 
-        # Parallel(n_jobs=-1)(
-        #     delayed(plot_all_random_x0)(dim)
-        #     for dim in tqdm(DIMS, desc="Processing dimension*x0_mode sets...")
-        # )
-        #
+        Parallel(n_jobs=-1)(
+            delayed(plot_all_random_x0)(dim)
+            for dim in tqdm(
+                DIMS, desc="Processing dimension*x0_mode sets for random x0..."
+            )
+        )
         Parallel(n_jobs=-1)(
             delayed(plot_all_inherited_x0)(dim)
-            for dim in tqdm(DIMS, desc="Processing dimension*x0_mode sets...")
+            for dim in tqdm(
+                DIMS, desc="Processing dimension*x0_mode sets for inherited x0..."
+            )
         )

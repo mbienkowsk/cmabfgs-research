@@ -18,11 +18,11 @@ class HessianNormalization(Enum):
             case HessianNormalization.UNIT:
                 return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1")
             case HessianNormalization.UNIT_DIM:
-                return tex("\\sqrt{\\sum{ij}{C_{ij}^2}} = d")
+                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = d")
             case HessianNormalization.UNIT_DIVIDED_BY_DIM:
-                return tex("\\sqrt{\\sum{ij}{C_{ij}^2}} = 1/d")
+                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1/d")
             case HessianNormalization.UNIT_DIVIDED_BY_DIM_ROOT:
-                return tex("\\sqrt{\\sum{ij}{C_{ij}^2}} = 1/\\sqrt{d}")
+                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1/\\sqrt{d}")
 
     def normalize(self, mat: np.ndarray):
         match self:
