@@ -2,7 +2,6 @@ import os
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
-from itertools import product
 from pathlib import Path
 from typing import Literal, cast
 
@@ -16,6 +15,7 @@ from lib.plotting_util import (
     configure_mpl_for_manuscript,
     plot_with_legend_function,
     set_log_x_labels,
+    tex,
 )
 from lib.util import trim_constant_tail
 
@@ -112,7 +112,7 @@ class BFGSAccelerationPlotter:
         ax.set_yscale("log")
         plt.tight_layout()
 
-    def plot_comparison_by_iterations(self, norm: HessianNormalization):
+    def plot_comparison_for_norm(self, norm: HessianNormalization):
         data = self.get_data_for_normalization_method(norm)
 
         def to_label(col: str):
@@ -133,9 +133,13 @@ class BFGSAccelerationPlotter:
         else:
             plt.show()
 
-    def plot_comparison_by_normalization_method(
-        self, preconditioning: int | Literal["identity", "inv_hess"]
+    def plot_comparison_for_preconditioning(
+        self,
+        preconditioning: int | Literal["identity", "inv_hess"],
+        norm_variants: list[HessianNormalization] | None = None,
     ):
+        if norm_variants is None:
+            norm_variants = HessianNormalization.non_degenerate_choices()
         if isinstance(preconditioning, str):
             data = cast(
                 pd.DataFrame,
@@ -151,8 +155,25 @@ class BFGSAccelerationPlotter:
                 else "brak normalizacji"
             )
 
+        data = data[
+            [
+                col
+                for col in data.columns
+                if any(
+                    extract_normalization_from_column(col) == v for v in norm_variants
+                )
+            ]
+        ]
         with self.new_ax() as ax:
-            plot_with_legend_function(data, ax, to_label)
+            plot_with_legend_function(data, ax, to_label)  # pyright: ignore[reportArgumentType]
+
+        if isinstance(preconditioning, int):
+            prec_for_title = tex(f"H_{{{preconditioning}}}")
+        elif preconditioning == "identity":
+            prec_for_title = tex("I")
+        else:
+            prec_for_title = tex("H^{-1}")
+        plt.title(f"d={self.dimensions}, $H_{{inv0}}$={prec_for_title}")
 
         if self.save_to_disk:
             plt.savefig(
@@ -163,33 +184,42 @@ class BFGSAccelerationPlotter:
         else:
             plt.show()
 
-    def draw_all_by_norm(self):
-        for norm in HessianNormalization:
-            self.plot_comparison_by_iterations(norm)  # pyright: ignore[reportArgumentType]
+    def get_all_preconditioning_variants(self):
+        seen = set()
+        for cols in self.df.columns:
+            if (iters := extract_iterations_from_column(cols)) is not None:
+                seen.add(iters)
+            elif "identity" in cols:
+                seen.add("identity")
+            elif "inv_hess" in cols:
+                seen.add("inv_hess")
+
+        return seen
 
 
-def run_case(dim, x0_mode):
-    BFGSAccelerationPlotter(
+def plot_all_random_x0(dim):
+    plotter = BFGSAccelerationPlotter(
         dimensions=dim,
-        x0_mode=x0_mode,  # pyright: ignore[reportArgumentType]
+        x0_mode="random",
         manuscript_version=True,
         save_to_disk=True,
-    ).draw_all_by_norm()
+    )
+    for norm in HessianNormalization:
+        plotter.plot_comparison_for_norm(norm)
+
+    for prec in plotter.get_all_preconditioning_variants():
+        plotter.plot_comparison_for_preconditioning(prec)
 
 
 if __name__ == "__main__":
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
     if debug:
-        plotter = BFGSAccelerationPlotter(10, "random", save_to_disk=True)
-        plotter.plot_comparison_by_normalization_method("inv_hess")
+        plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=False)
     else:
         DIMS = [10, 20, 50, 100]
-        X_0_MODES = ["random", "inherited"]
-
-        pairs = list(product(DIMS, X_0_MODES))
 
         Parallel(n_jobs=-1)(
-            delayed(run_case)(dim, x0_mode)
-            for dim, x0_mode in tqdm(pairs, desc="Processing dimension*x0_mode sets...")
+            delayed(plot_all_random_x0)(dim)
+            for dim in tqdm(DIMS, desc="Processing dimension*x0_mode sets...")
         )
