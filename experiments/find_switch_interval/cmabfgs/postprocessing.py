@@ -2,10 +2,8 @@ import os
 import re
 from dataclasses import dataclass, field
 from itertools import product
-from pathlib import Path
 from typing import Callable
 
-import matplotlib.pyplot as plt
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
@@ -35,6 +33,18 @@ class CMABFGSPostprocessor:
     @property
     def input_file(self):
         return self.config.output_directory / "raw.parquet"
+
+    @property
+    def raw_curves_output_file(self):
+        return self.config.output_directory / "raw_curves.parquet"
+
+    @property
+    def agg_curves_output_file(self):
+        return self.config.output_directory / "agg_curves.parquet"
+
+    @property
+    def agg_cmaes_output_file(self):
+        return self.config.input_file.parent / "agg.parquet"
 
     def is_divisible_by_multiplier(self, label: str, multiplier: float):
         iters = int(self.config.dimensions * multiplier)
@@ -111,8 +121,8 @@ class CMABFGSPostprocessor:
 
         df_out = pd.concat(results, ignore_index=True)
         vanilla_bfgs_curve = (
-            df["best_vanilla_bfgs"]
-            .rename("value")
+            df["best_vanilla_bfgs"]  # pyright: ignore[reportCallIssue]
+            .rename("value")  # pyright: ignore[reportArgumentType]
             .reset_index()
             .dropna()
             .assign(run_id=run_id, multiplier=0.0)
@@ -124,18 +134,22 @@ class CMABFGSPostprocessor:
         df_out["multiplier"] = df_out["multiplier"].astype("category")
         return df_out
 
-    def archive_data(self, raw: pd.DataFrame, agg: pd.DataFrame):
-        outpath = self.config.output_directory / "raw_curves.parquet"
-        compress_and_save(raw, outpath)
-
+    def archive_data(
+        self, raw: pd.DataFrame, agg: pd.DataFrame, agg_cmaes: pd.DataFrame
+    ):
+        compress_and_save(raw, self.raw_curves_output_file)
         if self.config.debug:
-            df = pd.read_parquet(outpath)
+            df = pd.read_parquet(self.raw_curves_output_file)
             summarize_data(df)
 
-        outpath = self.config.output_directory / "agg_curves.parquet"
-        compress_and_save(agg, outpath)
+        compress_and_save(agg, self.agg_curves_output_file)
         if self.config.debug:
-            df = pd.read_parquet(outpath)
+            df = pd.read_parquet(self.agg_curves_output_file)
+            summarize_data(df)
+
+        compress_and_save(agg_cmaes, self.agg_cmaes_output_file)
+        if self.config.debug:
+            df = pd.read_parquet(self.agg_cmaes_output_file)
             summarize_data(df)
 
     def run(self, n_jobs: int = -1):
@@ -144,8 +158,9 @@ class CMABFGSPostprocessor:
         except Exception:
             logger.error(f"MISSING RUN FILE FOR CONFIGURATION {self.config}")
             return
-        only_cmaes = aggregate_dataframes(
-            [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")], None
+        agg_cmaes = aggregate_dataframes(
+            [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")],  # pyright: ignore[reportArgumentType]
+            None,
         )
 
         grouped = list(raw.groupby("run_id"))
@@ -157,8 +172,7 @@ class CMABFGSPostprocessor:
 
         raw = pd.concat(dfs, ignore_index=True)  # pyright: ignore
         agg = self.aggregate_curves(raw)
-        self.plot(agg, only_cmaes)
-        self.archive_data(raw, agg)
+        self.archive_data(raw, agg, agg_cmaes)
 
     @staticmethod
     def aggregate_curves(df: pd.DataFrame) -> pd.DataFrame:
@@ -198,64 +212,6 @@ class CMABFGSPostprocessor:
 
         return pd.concat(results, ignore_index=True)
 
-    @property
-    def plot_save_path(self):
-        return (
-            Path(__file__).parent
-            / "results"
-            / "plots"
-            / self.config.objective_choice.value
-            / str(self.config.dimensions)
-            / self.config.optimum_position.value
-            / f"{self.config.hess_normalization.value}.png"
-        )
-
-    def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
-        fig, ax = plt.subplots(figsize=(16, 11))
-
-        secax = ax.secondary_xaxis(
-            "bottom",
-            functions=(
-                lambda x: x / (4 * self.config.dimensions),  # pyright: ignore[reportOperatorIssue]
-                lambda x: x * 4 * self.config.dimensions,  # pyright: ignore[reportOperatorIssue]
-            ),
-        )
-        secax.spines["bottom"].set_position(("outward", 40))
-
-        for mul, mul_df in agg_df.groupby("multiplier"):
-            mul_df.plot(
-                ax=ax,
-                logx=True,
-                logy=True,
-                x="num_evaluations",
-                y="mean",
-                label=self.get_label_from_mul(mul),  # pyright: ignore[reportArgumentType]
-            )
-
-        cmaes_df.plot(
-            ax=ax, logx=True, logy=True, y="best_cmaes", label="vanilla CMA-ES"
-        )
-        ax.grid()
-
-        plt.title(
-            f"Krzywe zbieżności CMA-ES i CMABFGS (d={self.config.dimensions}, f={self.config.objective_choice.value}, optimum {self.config.optimum_position.to_plot_label()})\n\
-            Hesjan: {self.config.hess_normalization.to_plot_label()}"
-        )
-        secax.set_xlabel("Iteracje CMA-ES")
-        ax.set_xlabel("Liczba ewaluacji funkcji celu")
-        plt.tight_layout()
-        if self.config.debug:
-            plt.show()
-        else:
-            self.plot_save_path.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(self.plot_save_path, dpi=300)
-
-    def get_label_from_mul(self, mul: float) -> str:
-        if mul == 0:
-            return "Vanilla BFGS"
-        iters = int(self.config.dimensions * mul)
-        return f"Przełączenie co {iters} iteracji"
-
 
 def process_config(
     dim: int, obj: Callable, op: OptimumPosition, hess_norm: HessianNormalization
@@ -272,12 +228,12 @@ if __name__ == "__main__":
     if debug:
         processor = CMABFGSPostprocessor(
             CMABFGSExperimentConfig(
-                10,
+                100,
                 ANY_INT,
                 ObjectiveChoice.CEC1,
                 OptimumPosition.MIDDLE,
-                False,
-                HessianNormalization.UNIT_DIM,
+                True,
+                HessianNormalization.UNIT,
             )
         )
         processor.run()
@@ -289,6 +245,7 @@ if __name__ == "__main__":
         ]
         hess_norms = [
             HessianNormalization.UNIT_DIM,
+            HessianNormalization.UNIT,
         ]
 
         Parallel(n_jobs=-1, backend="loky")(
