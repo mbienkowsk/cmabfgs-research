@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 from experiments.find_switch_interval.common import OptimumPosition
+from lib.plotting_util import configure_mpl_for_manuscript
 
 F_GLOBAL = 0.0
 PLOT_PADDING = 25.0
@@ -56,6 +57,7 @@ def draw_case(data: pd.DataFrame, **kwargs):
 
 if __name__ == "__main__":
     rows = []
+    configure_mpl_for_manuscript()
     for p in OptimumPosition:
         low, high = p.get_bounds()
         rows.append(
