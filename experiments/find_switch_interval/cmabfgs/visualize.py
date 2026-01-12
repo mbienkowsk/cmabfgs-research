@@ -12,7 +12,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 )
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
 from lib.enums import HessianNormalization
-from lib.plotting_util import configure_mpl_for_manuscript
+from lib.plotting_util import configure_mpl_for_manuscript, set_log_x_labels
 
 ANY_INT = 0
 
@@ -60,6 +60,7 @@ class CMABFGSPlotter:
     def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
         configure_mpl_for_manuscript()
         fig, ax = plt.subplots(figsize=(16, 11))
+        set_log_x_labels(ax)
 
         secax = ax.secondary_xaxis(
             "bottom",
@@ -83,7 +84,7 @@ class CMABFGSPlotter:
         ax.grid()
         title = f"d={self.config.dimensions}, f={self.config.objective_choice.value}"
         if not self.config.objective_choice.value.startswith("CEC"):
-            title += f", optimum {self.config.optimum_position.to_plot_label()}"
+            title += f"\n optimum {self.config.optimum_position.to_plot_label()}"
 
         plt.title(title)
         secax.set_xlabel("Iteracje CMA-ES")
@@ -115,8 +116,8 @@ if __name__ == "__main__":
         config = CMABFGSExperimentConfig(
             100,
             ANY_INT,
-            ObjectiveChoice.ELLIPTIC,
-            OptimumPosition.MIDDLE,
+            ObjectiveChoice.RASTRIGIN,
+            OptimumPosition.CORNER,
             True,
             HessianNormalization.UNIT,
         )
