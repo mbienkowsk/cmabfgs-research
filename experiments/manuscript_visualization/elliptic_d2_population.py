@@ -7,7 +7,7 @@ from lib.metrics_collector import MetricsCollector
 from lib.optimizers.cmaes import CMAES
 from lib.random import IndividualGenerator
 from lib.stopping import CMAESEarlyStopping
-from lib.util import EvalCounter
+from lib.util import EvalCounter, evaluation_budget
 
 DIMENSIONS = 2
 POPSIZE = 4 * DIMENSIONS
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         generator.get_individual(),
         POPSIZE,
         generator.seed,
-        CMAESEarlyStopping(max_evals=10_000 * DIMENSIONS),
+        CMAESEarlyStopping(max_evals=evaluation_budget(DIMENSIONS)),
         [callback],
         BOUNDS,
     )

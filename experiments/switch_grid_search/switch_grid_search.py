@@ -19,7 +19,7 @@ from lib.optimizers.hybrids import MultiCMABFGS, MultiCMALBFGSB
 from lib.optimizers.lbfgs import L_BFGS_B
 from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
-from lib.util import EvalCounter
+from lib.util import EvalCounter, evaluation_budget
 
 LOG_LEVEL = "ERROR"
 DEBUG = os.getenv("DEBUG", False)
@@ -41,7 +41,7 @@ else:
     OBJECTIVE_NAME = os.environ["OBJECTIVE"]
     SWITCH_AFTER_ITERATIONS = list(map(int, os.environ["SWITCH_AFTER"].split("-")))
 
-MAXEVALS = 10_000 * DIMENSIONS
+MAXEVALS = evaluation_budget(DIMENSIONS)
 POPULATION_SIZE = 4 * DIMENSIONS
 
 

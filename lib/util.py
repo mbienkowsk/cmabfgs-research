@@ -197,3 +197,7 @@ def trim_constant_tail(
     if len(idx) == 0:
         return s.iloc[:1]
     return s.iloc[: idx[-1] + 2 + leave_first_n]
+
+
+def evaluation_budget(dim: int):
+    return 10_000 * dim

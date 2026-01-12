@@ -5,6 +5,7 @@ from typing import override
 from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
 )
+from lib.util import evaluation_budget
 
 
 @dataclass
@@ -15,7 +16,7 @@ class CMAESExperimentConfig(ExperimentConfigBase):
 
     def __post_init__(self):
         super().__post_init__()
-        self.max_evals = 10_000 * self.dimensions
+        self.max_evals = evaluation_budget(self.dimensions)
         self.popsize = 4 * self.dimensions
         self.collection_interval = self.dimensions // 2
 

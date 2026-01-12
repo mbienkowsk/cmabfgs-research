@@ -20,6 +20,7 @@ from lib.util import (
     EvalCounter,
     assert_all_non_increasing,
     assert_non_increasing,
+    evaluation_budget,
     get_x0_and_seed_for_run_id,
     make_symmetrical,
 )
@@ -46,7 +47,7 @@ else:
     CMAES_COLLECTION_INTERVAL = int(os.environ["CMAES_COLLECTION_INTERVAL"])
     TRY_AFTER_ITERATIONS = list(map(int, os.environ["TRY_AFTER"].split("-")))
 
-MAXEVALS = 10_000 * DIMENSIONS
+MAXEVALS = evaluation_budget(DIMENSIONS)
 POPULATION_SIZE = 4 * DIMENSIONS
 RESULT_DIR = Path(__file__).parent / "results" / f"d{DIMENSIONS}"
 AGG_DIR = RESULT_DIR / "agg"

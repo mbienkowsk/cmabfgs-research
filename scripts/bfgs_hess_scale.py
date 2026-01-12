@@ -10,10 +10,10 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
 from lib.stopping import BFGSEarlyStopping
-from lib.util import EvalCounter, get_x0_and_seed_for_run_id
+from lib.util import EvalCounter, evaluation_budget, get_x0_and_seed_for_run_id
 
 DIM = 100
-MAXEVALS = 10_000 * DIM
+MAXEVALS = evaluation_budget(DIM)
 RESULT_PATH = Path(__file__).parent / "bfgs_hess_scale.parquet"
 JAC = elliptic_grad
 KILL_OUTSIDE_BOUNDS = True

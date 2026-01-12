@@ -12,7 +12,7 @@ from lib.metrics import BestSoFar, CovarianceMatrixEigenvalueList, SigmaMeasurem
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.cmaes import CMAES
 from lib.stopping import CMAESEarlyStopping
-from lib.util import EvalCounter, get_x0_and_seed_for_run_id
+from lib.util import EvalCounter, evaluation_budget, get_x0_and_seed_for_run_id
 
 LOG_LEVEL = "ERROR"
 DEBUG = os.getenv("DEBUG", False)
@@ -30,7 +30,7 @@ else:
     NUM_RUNS = int(os.environ["N_RUNS"])
     EVERY_N_CALLS = int(os.environ["EVERY_N_CALLS"])
 
-MAXEVALS = 10_000 * DIMENSIONS
+MAXEVALS = evaluation_budget(DIMENSIONS)
 POPULATION_SIZE = 4 * DIMENSIONS
 
 RESULT_DIR = (

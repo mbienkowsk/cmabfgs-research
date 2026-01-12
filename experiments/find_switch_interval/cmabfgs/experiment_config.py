@@ -7,6 +7,7 @@ from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
 )
 from lib.enums import HessianNormalization
+from lib.util import evaluation_budget
 
 
 @dataclass
@@ -16,7 +17,7 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
 
     def __post_init__(self):
         super().__post_init__()
-        self.max_evals = 10_000 * self.dimensions
+        self.max_evals = evaluation_budget(self.dimensions)
 
     @property
     def debug_filename_stub(self):
