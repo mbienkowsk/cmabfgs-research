@@ -13,6 +13,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
 from lib.enums import HessianNormalization
 from lib.plotting_util import configure_mpl_for_manuscript, set_log_x_labels
+from lib.util import evaluation_budget
 
 ANY_INT = 0
 
@@ -47,7 +48,8 @@ class CMABFGSPlotter:
         return self.config.input_file.parent / "agg.parquet"
 
     def load_agg_df(self):
-        return pd.read_parquet(self.agg_curves_input_file)
+        df = pd.read_parquet(self.agg_curves_input_file)
+        return df[df["num_evaluations"] < evaluation_budget(self.config.dimensions)]
 
     def load_cmaes_df(self):
         return pd.read_parquet(self.cmaes_input_file)
@@ -153,8 +155,7 @@ if __name__ == "__main__":
                 control_dims, control_objectives, control_optimum_positions, hess_norms
             )
         ]
-        # all_configurations = cec_configurations + control_configurations
-        all_configurations = control_configurations
+        all_configurations = cec_configurations + control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
             delayed(plot_config)(config) for config in all_configurations
