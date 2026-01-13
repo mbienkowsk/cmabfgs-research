@@ -1,5 +1,4 @@
 import os
-from enum import Enum
 from itertools import product
 from pathlib import Path
 from typing import Callable
@@ -20,11 +19,6 @@ from lib.plotting_util import configure_mpl_for_manuscript
 from lib.util import compress_and_save, evaluation_budget
 
 ANY_INT = 0
-
-
-class ECDFMethod(Enum):
-    BEST_ACROSS_RUNS = "best_across_runs"
-    GLOBAL_OPTIMUM = "global_optimum"
 
 
 def load_ecdf_from_file(config: CMABFGSExperimentConfig):
@@ -65,18 +59,13 @@ def calculate_auc(curve: pd.DataFrame) -> float:
 @dataclass
 class ECDFCalculator:
     config: CMABFGSExperimentConfig
-    n_thresholds: int = 25
+    n_thresholds: int = 50
 
-    def get_f_ref(self, df: pd.DataFrame, method: ECDFMethod):
-        # the postprocessed data already uses the global optimum as reference
-        return df["best_so_far"].min() if method == ECDFMethod.BEST_ACROSS_RUNS else 0
-
-    def add_gap_column(self, df: pd.DataFrame, method: ECDFMethod):
-        f_ref = self.get_f_ref(df, method)
+    def add_gap_column(self, df: pd.DataFrame):
+        f_ref = 0
 
         df = df.copy()
         df["gap"] = df["best_so_far"] - f_ref
-        df["ecdf_method"] = method.value
         return df
 
     def load_convergence_curves(self) -> pd.DataFrame:
@@ -124,7 +113,6 @@ class ECDFCalculator:
         df: pd.DataFrame,
         epsilon: float,
         x_grid: np.ndarray,
-        ecdf_method: ECDFMethod,
     ):
         # per run: first hit time
         hit_times = (
@@ -190,15 +178,13 @@ class ECDFCalculator:
 
         ecdfs = []
 
-        for method in ECDFMethod:
-            df_m = self.add_gap_column(df_base, method)
-            f_ref = self.get_f_ref(df_base, method)
-            grid = self.get_eps_grid(df_m, f_ref)  # pyright: ignore[reportArgumentType]
+        df_m = self.add_gap_column(df_base)
+        f_ref = 0
+        grid = self.get_eps_grid(df_m, f_ref)  # pyright: ignore[reportArgumentType]
 
-            for eps in grid:
-                ecdf = self.compute_ecdf(df_m, eps, x_grid, method)
-                ecdf["ecdf_method"] = method.value
-                ecdfs.append(ecdf)
+        for eps in grid:
+            ecdf = self.compute_ecdf(df_m, eps, x_grid)
+            ecdfs.append(ecdf)
 
         ecdf_df = pd.concat(ecdfs, ignore_index=True)
 
@@ -215,7 +201,6 @@ def process_config(config: CMABFGSExperimentConfig):
     plot_ecdf(
         ecdf,
         f"d={config.dimensions}, F={config.objective_choice.value}",
-        ECDFMethod.GLOBAL_OPTIMUM,
         plot_save_path(config),
         False,
     )
@@ -224,19 +209,13 @@ def process_config(config: CMABFGSExperimentConfig):
 def plot_ecdf(
     ecdf_df: pd.DataFrame,
     title: str,
-    method: ECDFMethod,
     save_path: Path,
     show: bool = False,
     label_fn: Callable[[str], str] | None = None,
 ):
     configure_mpl_for_manuscript()
 
-    frame = (
-        ecdf_df.query("ecdf_method == @method.value")
-        .groupby(["optimizer", "x"])["ecdf"]
-        .mean()
-        .reset_index()
-    )
+    frame = ecdf_df.groupby(["optimizer", "x"])["ecdf"].mean().reset_index()
 
     fig, ax = plt.subplots(figsize=(16, 9))
 
@@ -261,7 +240,6 @@ def plot_ecdf(
 def plot_cec_ecdfs_with_auc(
     dimensions: int,
     hess_normalization: HessianNormalization,
-    method: ECDFMethod,
     save_dir: Path,
 ):
     ecdf_frames = []
@@ -290,7 +268,7 @@ def plot_cec_ecdfs_with_auc(
     # aggregate ECDFs across CEC functions
     ecdf_all = (
         pd.concat(ecdf_frames, ignore_index=True)
-        .groupby(["optimizer", "x", "epsilon", "ecdf_method"])["ecdf"]
+        .groupby(["optimizer", "x", "epsilon"])["ecdf"]
         .mean()
         .reset_index()
     )
@@ -298,8 +276,7 @@ def plot_cec_ecdfs_with_auc(
 
     # compute AUC per optimizer
     auc_series = (
-        ecdf_all.query("ecdf_method == @method.value")
-        .groupby(["optimizer", "epsilon"])
+        ecdf_all.groupby(["optimizer", "epsilon"])
         .apply(calculate_auc)
         .reset_index(name="auc")  # pyright: ignore[reportCallIssue]
         .groupby("optimizer")["auc"]
@@ -308,7 +285,6 @@ def plot_cec_ecdfs_with_auc(
     auc_series.to_frame(name="auc").reset_index().assign(
         dimension=dimensions,
         hess_normalization=hess_normalization.value,
-        ecdf_method=method.value,
     ).to_csv(save_dir / "auc.csv", index=False)
 
     auc_map = auc_series.to_dict()
@@ -319,7 +295,6 @@ def plot_cec_ecdfs_with_auc(
     plot_ecdf(
         ecdf_df=ecdf_all,
         title=f"ECDF (d={dimensions}, {hess_normalization.to_plot_label()})",
-        method=method,
         save_path=save_dir / "agg_ecdf.png",
         show=False,
         label_fn=label_fn,
@@ -334,7 +309,6 @@ if __name__ == "__main__":
         plot_cec_ecdfs_with_auc(
             100,
             HessianNormalization.UNIT,
-            ECDFMethod.GLOBAL_OPTIMUM,
             agg_ecdf_dir(100, HessianNormalization.UNIT),
         )
         # config = CMABFGSExperimentConfig(
@@ -346,11 +320,9 @@ if __name__ == "__main__":
         #     HessianNormalization.UNIT,
         # )
         # ecdf = ECDFCalculator(config).compute_all_ecdfs()
-        # method = ECDFMethod.GLOBAL_OPTIMUM
         # plot_ecdf(
         #     ecdf,
         #     f"d={config.dimensions}, F={config.objective_choice.value}",
-        #     method,
         #     plot_save_path(config),
         #     True,
         # )
@@ -367,6 +339,7 @@ if __name__ == "__main__":
         ]
         cec_dims = [10, 30, 50, 100]
         # cec_dims = [100]
+
         cec_objectives = ObjectiveChoice.all_cec_objectives()
         cec_configurations = [
             CMABFGSExperimentConfig(
@@ -384,7 +357,6 @@ if __name__ == "__main__":
             delayed(plot_cec_ecdfs_with_auc)(
                 d,
                 hess_norm,
-                ECDFMethod.GLOBAL_OPTIMUM,
                 agg_ecdf_dir(d, hess_norm),
             )
             for d, hess_norm in product(cec_dims, hess_norms)
