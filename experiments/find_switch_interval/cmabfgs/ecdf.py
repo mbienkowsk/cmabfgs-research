@@ -238,7 +238,7 @@ def plot_ecdf(
         .reset_index()
     )
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(16, 9))
 
     for optimizer, g in frame.groupby("optimizer"):
         label = label_fn(optimizer) if label_fn else optimizer  # pyright: ignore[reportArgumentType]
@@ -246,13 +246,13 @@ def plot_ecdf(
 
     ax.set_xscale("log")
     ax.set_title(title)
-    ax.set_xlabel("Function evaluations")
-    ax.set_ylabel("Fraction of runs solved")
+    ax.set_xlabel("Liczba ewaluacji funkcji celu")
+    ax.set_ylabel("Liczba uruchomień przekraczających barierę")
     ax.grid()
     ax.legend()
 
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path, bbox_inches="tight", dpi=300)
+    plt.savefig(save_path, dpi=300)
     if show:
         plt.show()
     plt.close()
@@ -296,23 +296,29 @@ def plot_cec_ecdfs_with_auc(
     )
     compress_and_save(ecdf_all, save_dir / "aggregated_ecdf.parquet")
 
-    # compute AUC per optimizer (averaged over epsilons)
-    auc_map = (
+    # compute AUC per optimizer
+    auc_series = (
         ecdf_all.query("ecdf_method == @method.value")
         .groupby(["optimizer", "epsilon"])
         .apply(calculate_auc)
         .reset_index(name="auc")  # pyright: ignore[reportCallIssue]
         .groupby("optimizer")["auc"]
         .mean()
-        .to_dict()
     )
+    auc_series.to_frame(name="auc").reset_index().assign(
+        dimension=dimensions,
+        hess_normalization=hess_normalization.value,
+        ecdf_method=method.value,
+    ).to_csv(save_dir / "auc.csv", index=False)
+
+    auc_map = auc_series.to_dict()
 
     def label_fn(optimizer: str) -> str:
         return f"{optimizer} (AUC={auc_map[optimizer]:.3f})"
 
     plot_ecdf(
         ecdf_df=ecdf_all,
-        title=f"ECDF (d={dimensions}, hess={hess_normalization.value}, {method.value})",
+        title=f"ECDF (d={dimensions}, {hess_normalization.to_plot_label()})",
         method=method,
         save_path=save_dir / "agg_ecdf.png",
         show=False,
@@ -325,24 +331,30 @@ if __name__ == "__main__":
     print(f"Debug mode: {debug}")
 
     if debug:
-        config = CMABFGSExperimentConfig(
+        plot_cec_ecdfs_with_auc(
             100,
-            ANY_INT,
-            ObjectiveChoice.CEC17,
-            OptimumPosition.MIDDLE,
-            True,
             HessianNormalization.UNIT,
+            ECDFMethod.GLOBAL_OPTIMUM,
+            agg_ecdf_dir(100, HessianNormalization.UNIT),
         )
-        ecdf = ECDFCalculator(config).compute_all_ecdfs()
-        method = ECDFMethod.GLOBAL_OPTIMUM
-        plot_ecdf(
-            ecdf,
-            f"d={config.dimensions}, F={config.objective_choice.value}",
-            method,
-            plot_save_path(config),
-            True,
-        )
-
+        # config = CMABFGSExperimentConfig(
+        #     100,
+        #     ANY_INT,
+        #     ObjectiveChoice.CEC17,
+        #     OptimumPosition.MIDDLE,
+        #     True,
+        #     HessianNormalization.UNIT,
+        # )
+        # ecdf = ECDFCalculator(config).compute_all_ecdfs()
+        # method = ECDFMethod.GLOBAL_OPTIMUM
+        # plot_ecdf(
+        #     ecdf,
+        #     f"d={config.dimensions}, F={config.objective_choice.value}",
+        #     method,
+        #     plot_save_path(config),
+        #     True,
+        # )
+        #
     else:
         hess_norms = [
             # HessianNormalization.UNIT_DIM,
@@ -353,8 +365,8 @@ if __name__ == "__main__":
         cec_optimum_positions = [
             OptimumPosition.MIDDLE,
         ]
-        # cec_dims = [10, 30, 50, 100]
-        cec_dims = [100]
+        cec_dims = [10, 30, 50, 100]
+        # cec_dims = [100]
         cec_objectives = ObjectiveChoice.all_cec_objectives()
         cec_configurations = [
             CMABFGSExperimentConfig(
