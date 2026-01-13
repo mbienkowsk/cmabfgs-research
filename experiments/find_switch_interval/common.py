@@ -44,6 +44,10 @@ class ObjectiveChoice(Enum):
     CEC29 = "CEC29"
     CEC30 = "CEC30"
 
+    @classmethod
+    def all_cec_objectives(cls):
+        return [e for e in cls if e.name.startswith("CEC")]
+
 
 class OptimumPosition(Enum):
     MIDDLE = "middle"
