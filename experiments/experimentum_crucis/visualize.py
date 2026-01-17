@@ -150,6 +150,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
                 linestyle="dashed",
             )
             plt.semilogy(
+                averaged["iteration"],
                 averaged["eigv_ratios"].apply(lambda x: x[i]),  # pyright: ignore[reportAttributeAccessIssue]
                 label=f"estimated ratio {i + 1}",
             )
@@ -186,6 +187,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     ):
         for i in range(len(actual_eigenvalues)):
             plt.semilogy(
+                averaged["iteration"],
                 averaged["corresp_eig_ratios"].apply(lambda x: x[i]),  # pyright: ignore[reportAttributeAccessIssue]
                 label=f"ratio for $\\lambda_{i + 1}$",
             )
