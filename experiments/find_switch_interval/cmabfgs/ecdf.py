@@ -20,6 +20,8 @@ from lib.util import compress_and_save, evaluation_budget
 
 ANY_INT = 0
 
+THRESHOLD_MIN = 1e-8
+
 
 def load_ecdf_from_file(config: CMABFGSExperimentConfig):
     return pd.read_parquet(config.output_directory / "ecdf_curves.parquet")
@@ -60,13 +62,6 @@ def calculate_auc(curve: pd.DataFrame) -> float:
 class ECDFCalculator:
     config: CMABFGSExperimentConfig
     n_thresholds: int = 50
-
-    def add_gap_column(self, df: pd.DataFrame):
-        f_ref = 0
-
-        df = df.copy()
-        df["gap"] = df["best_so_far"] - f_ref
-        return df
 
     def load_convergence_curves(self) -> pd.DataFrame:
         cmaes_df = pd.read_parquet(self.config.input_file)
@@ -109,89 +104,63 @@ class ECDFCalculator:
         )
 
     @staticmethod
-    def compute_ecdf(
+    def _compute_ecdf(
         df: pd.DataFrame,
-        epsilon: float,
+        thresholds: np.ndarray,
         x_grid: np.ndarray,
-    ):
-        # per run: first hit time
-        hit_times = (
-            df[df["gap"] <= epsilon]
-            .groupby(["optimizer", "run_id"])["num_evaluations"]
-            .min()
-            .reset_index(name="hit_time")  # pyright: ignore[reportCallIssue]
-        )
-
-        # right-censor runs that never hit
-        all_runs = df[["optimizer", "run_id"]].drop_duplicates().assign(hit_time=np.inf)
-
-        hit_times = all_runs.merge(
-            hit_times, on=["optimizer", "run_id"], how="left"
-        ).assign(
-            hit_time=lambda d: np.where(
-                d["hit_time_y"].notna(),
-                d["hit_time_y"],
-                d["hit_time_x"],
-            )
-        )
-
-        # ECDF
+    ) -> pd.DataFrame:
         rows = []
-        for x in x_grid:
-            frac = (hit_times["hit_time"] <= x).groupby(hit_times["optimizer"]).mean()
 
-            rows.append(frac.rename("ecdf").reset_index().assign(x=x, epsilon=epsilon))
+        for (optimizer, run_id), g in df.groupby(["optimizer", "run_id"]):  # pyright: ignore[reportGeneralTypeIssues]
+            g = g.sort_values("num_evaluations")
 
-        return pd.concat(rows, ignore_index=True)
+            fracs = g["best_so_far"].apply(
+                lambda gap: np.sum(gap <= thresholds) / len(thresholds)
+            )
 
-    def get_eps_grid(self, df: pd.DataFrame, f_ref: float) -> np.ndarray:
-        """
-        Construct a logarithmic epsilon grid based on empirically achievable gaps.
-        """
-        # per-run best values
-        best_per_run = df.groupby(["optimizer", "run_id"])["best_so_far"].min()
+            run_curve = pd.DataFrame(
+                {
+                    "optimizer": optimizer,
+                    "run_id": run_id,
+                    "num_evaluations": g["num_evaluations"].values,
+                    "frac": fracs.values,
+                }
+            )
 
-        gaps = best_per_run - f_ref  # pyright: ignore[reportOperatorIssue]
+            # discretize
+            for x in x_grid:
+                past = run_curve[run_curve["num_evaluations"] <= x]
+                y = past["frac"].max() if not past.empty else 0.0
 
-        # remove zero / negative gaps (numerical safety)
-        gaps = gaps[gaps > 0]
+                rows.append(
+                    {
+                        "optimizer": optimizer,
+                        "x": x,
+                        "ecdf": y,
+                    }
+                )
 
-        if len(gaps) == 0:
-            raise ValueError("No positive gaps found; ECDF targets undefined.")
-
-        eps_min = np.percentile(gaps, 10)
-        eps_max = np.percentile(gaps, 100)
-
-        # safety guards
-        eps_min = max(eps_min, 1e-12)
-        # eps_max = max(eps_max, eps_min * 10)
-
-        return np.logspace(
-            np.log10(eps_min),
-            np.log10(eps_max),
-            self.n_thresholds,
+        return (
+            pd.DataFrame(rows)
+            .groupby(["optimizer", "x"], as_index=False)["ecdf"]
+            .mean()
         )
 
-    def compute_all_ecdfs(self):
-        df_base = self.load_convergence_curves()
+    def get_threshold_grid(self, df: pd.DataFrame):
+        tmin = THRESHOLD_MIN
+        tmax = df["best_so_far"].max()
+        return np.logspace(np.log10(tmin), np.log10(tmax), self.n_thresholds)
+
+    def compute_ecdf(self):
+        df = self.load_convergence_curves()
         x_grid = self.get_budget_grid()
+        threshold_grid = self.get_threshold_grid(df)
+        ecdf = self._compute_ecdf(df, threshold_grid, x_grid)
 
-        ecdfs = []
-
-        df_m = self.add_gap_column(df_base)
-        f_ref = 0
-        grid = self.get_eps_grid(df_m, f_ref)  # pyright: ignore[reportArgumentType]
-
-        for eps in grid:
-            ecdf = self.compute_ecdf(df_m, eps, x_grid)
-            ecdfs.append(ecdf)
-
-        ecdf_df = pd.concat(ecdfs, ignore_index=True)
-
-        return ecdf_df
+        return ecdf
 
     def run(self):
-        ecdf_df = self.compute_all_ecdfs()
+        ecdf_df = self.compute_ecdf()
         compress_and_save(ecdf_df, self.config.output_directory / "ecdf_curves.parquet")
 
 
@@ -226,7 +195,7 @@ def plot_ecdf(
     ax.set_xscale("log")
     ax.set_title(title)
     ax.set_xlabel("Liczba ewaluacji funkcji celu")
-    ax.set_ylabel("Liczba uruchomień przekraczających barierę")
+    ax.set_ylabel("Liczba obserwacji powyżej bariery")
     ax.grid()
     ax.legend()
 
@@ -268,7 +237,7 @@ def plot_cec_ecdfs_with_auc(
     # aggregate ECDFs across CEC functions
     ecdf_all = (
         pd.concat(ecdf_frames, ignore_index=True)
-        .groupby(["optimizer", "x", "epsilon"])["ecdf"]
+        .groupby(["optimizer", "x"])["ecdf"]
         .mean()
         .reset_index()
     )
@@ -276,16 +245,25 @@ def plot_cec_ecdfs_with_auc(
 
     # compute AUC per optimizer
     auc_series = (
-        ecdf_all.groupby(["optimizer", "epsilon"])
+        ecdf_all.groupby(["optimizer"])
         .apply(calculate_auc)
         .reset_index(name="auc")  # pyright: ignore[reportCallIssue]
         .groupby("optimizer")["auc"]
         .mean()
     )
-    auc_series.to_frame(name="auc").reset_index().assign(
-        dimension=dimensions,
-        hess_normalization=hess_normalization.value,
-    ).to_csv(save_dir / "auc.csv", index=False)
+
+    auc_to_disk = (
+        auc_series.to_frame(name="auc")
+        .reset_index()
+        .assign(
+            dimension=dimensions,
+            hess_normalization=hess_normalization.value,
+        )
+    )
+    auc_to_disk["auc_norm"] = auc_to_disk["auc"] / auc_to_disk.groupby("dimension")[
+        "auc"
+    ].transform("max")
+    auc_to_disk.to_csv(save_dir / "auc.csv", index=False)
 
     auc_map = auc_series.to_dict()
 
@@ -306,30 +284,29 @@ if __name__ == "__main__":
     print(f"Debug mode: {debug}")
 
     if debug:
-        plot_cec_ecdfs_with_auc(
-            100,
-            HessianNormalization.UNIT,
-            agg_ecdf_dir(100, HessianNormalization.UNIT),
-        )
-        # config = CMABFGSExperimentConfig(
+        # plot_cec_ecdfs_with_auc(
         #     100,
-        #     ANY_INT,
-        #     ObjectiveChoice.CEC17,
-        #     OptimumPosition.MIDDLE,
-        #     True,
         #     HessianNormalization.UNIT,
+        #     agg_ecdf_dir(100, HessianNormalization.UNIT),
         # )
-        # ecdf = ECDFCalculator(config).compute_all_ecdfs()
-        # plot_ecdf(
-        #     ecdf,
-        #     f"d={config.dimensions}, F={config.objective_choice.value}",
-        #     plot_save_path(config),
-        #     True,
-        # )
-        #
+        config = CMABFGSExperimentConfig(
+            100,
+            ANY_INT,
+            ObjectiveChoice.CEC17,
+            OptimumPosition.MIDDLE,
+            True,
+            HessianNormalization.UNIT,
+        )
+        ecdf = ECDFCalculator(config).compute_ecdf()
+        plot_ecdf(
+            ecdf,
+            f"d={config.dimensions}, F={config.objective_choice.value}",
+            plot_save_path(config),
+            True,
+        )
     else:
         hess_norms = [
-            # HessianNormalization.UNIT_DIM,
+            # HessianNormalization.UNIT_DIVIDED_BY_DIM_ROOT,
             HessianNormalization.UNIT,
         ]
 
