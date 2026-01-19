@@ -17,7 +17,7 @@ from experiments.find_switch_interval.common import (
 )
 from lib.enums import HessianNormalization
 from lib.serde import aggregate_dataframes
-from lib.util import compress_and_save, summarize_data
+from lib.util import OutOfBoundsHandlingMethod, compress_and_save, summarize_data
 
 ANY_INT = 0
 
@@ -259,7 +259,15 @@ if __name__ == "__main__":
             ObjectiveChoice.RASTRIGIN,
         ]
         control_configurations = [
-            CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
+            CMABFGSExperimentConfig(
+                d,
+                ANY_INT,
+                obj,
+                opt,
+                False,
+                hess_norm,
+                OutOfBoundsHandlingMethod.PENALTY,
+            )
             for d, obj, opt, hess_norm in product(
                 control_dims, control_objectives, control_optimum_positions, hess_norms
             )

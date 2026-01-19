@@ -152,7 +152,15 @@ if __name__ == "__main__":
             ObjectiveChoice.RASTRIGIN,
         ]
         control_configurations = [
-            CMABFGSExperimentConfig(d, ANY_INT, obj, opt, False, hess_norm)
+            CMABFGSExperimentConfig(
+                d,
+                ANY_INT,
+                obj,
+                opt,
+                False,
+                hess_norm,
+                OutOfBoundsHandlingMethod.PENALTY,
+            )
             for d, obj, opt, hess_norm in product(
                 control_dims, control_objectives, control_optimum_positions, hess_norms
             )

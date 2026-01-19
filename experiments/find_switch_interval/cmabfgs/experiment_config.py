@@ -58,6 +58,7 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
     @classmethod
     def create_from_env(cls):
         base = super().create_from_env()
+
         return cls(
             dimensions=base.dimensions,
             num_runs=base.num_runs,
@@ -65,4 +66,5 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
             optimum_position=base.optimum_position,
             debug=base.debug,
             hess_normalization=HessianNormalization(os.environ["HESS_NORM"]),
+            bound_handling=OutOfBoundsHandlingMethod.PENALTY,
         )
