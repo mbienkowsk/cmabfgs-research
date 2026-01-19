@@ -34,7 +34,6 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
         counter = EvalCounter(
             self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
             bounds=self.config.bounds,
-            kill_outside_bounds=True,
         )
         x0 = rng.get_individual()
         bfgs = BFGS(
@@ -68,7 +67,6 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
             counter = EvalCounter(
                 self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
                 bounds=self.config.bounds,
-                kill_outside_bounds=True,
             )
             hess_inv0 = self.reconstruct_covariance_matrix(row["cov_mat"])
             bfgs = BFGS(

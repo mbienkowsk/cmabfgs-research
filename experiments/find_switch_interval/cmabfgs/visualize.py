@@ -13,7 +13,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
 from lib.enums import HessianNormalization
 from lib.plotting_util import configure_mpl_for_manuscript, set_log_x_labels
-from lib.util import evaluation_budget
+from lib.util import OutOfBoundsHandlingMethod, evaluation_budget
 
 ANY_INT = 0
 
@@ -33,9 +33,11 @@ class CMABFGSPlotter:
 
     @property
     def plot_save_path(self):
+        base = Path(__file__).parent / "results"
+        if self.config.bound_handling == OutOfBoundsHandlingMethod.PENALTY:
+            base /= "with_penalty"
         return (
-            Path(__file__).parent
-            / "results"
+            base
             / "plots"
             / self.config.objective_choice.value
             / str(self.config.dimensions)

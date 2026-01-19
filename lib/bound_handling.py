@@ -11,6 +11,9 @@ class RepairMethod(Enum):
 class OutOfBoundsError(Exception): ...
 
 
+PENALTY_EXPONENT = 4
+
+
 def repair_by_reflection(
     individual: np.ndarray, bounds: tuple[float, float]
 ) -> np.ndarray:
@@ -47,3 +50,13 @@ def check_bounds(
     if raise_exception:
         raise OutOfBoundsError(f"Individual {individual} is out of bounds {bounds}.")
     return False
+
+
+def violation_distance(individual: np.ndarray, bounds: tuple[float, float]):
+    low, high = bounds
+    proj = np.clip(individual, low, high)
+    return np.linalg.norm(individual - proj)
+
+
+def calculate_penalty(individual: np.ndarray, bounds: tuple[float, float]):
+    return 10**PENALTY_EXPONENT * violation_distance(individual, bounds)

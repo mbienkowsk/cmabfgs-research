@@ -7,13 +7,14 @@ from experiments.find_switch_interval.common import (
     ExperimentConfigBase,
 )
 from lib.enums import HessianNormalization
-from lib.util import evaluation_budget
+from lib.util import OutOfBoundsHandlingMethod, evaluation_budget
 
 
 @dataclass
 class CMABFGSExperimentConfig(ExperimentConfigBase):
     max_evals: int = field(init=False)
     hess_normalization: HessianNormalization = HessianNormalization.UNIT_DIM
+    bound_handling: OutOfBoundsHandlingMethod = OutOfBoundsHandlingMethod.KILL
 
     def __post_init__(self):
         super().__post_init__()
@@ -30,9 +31,11 @@ class CMABFGSExperimentConfig(ExperimentConfigBase):
     @property
     @override
     def output_directory(self):
+        base = Path(__file__).parent / "results"
+        if self.bound_handling == OutOfBoundsHandlingMethod.PENALTY:
+            base /= "with_penalty"
         return (
-            Path(__file__).parent
-            / "results"
+            base
             / self.objective_choice.value
             / str(self.dimensions)
             / self.optimum_position.value

@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Hashable, cast
 
@@ -9,7 +10,7 @@ import pandas as pd
 from loguru import logger
 from sympy import prime
 
-from lib.bound_handling import OutOfBoundsError, check_bounds
+from lib.bound_handling import OutOfBoundsError, calculate_penalty, check_bounds
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -28,6 +29,12 @@ def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarr
     return grad
 
 
+class OutOfBoundsHandlingMethod(Enum):
+    KILL = "kill"
+    IGNORE = "ignore"
+    PENALTY = "penalty"
+
+
 @dataclass
 class EvalCounter:
     """A wrapper to count the number of evaluations & keep track of the
@@ -44,7 +51,9 @@ class EvalCounter:
     )
     bounds: tuple[float, float] | None = None
     identifier: str = ""
-    kill_outside_bounds: bool = False
+    outside_bounds_handling: OutOfBoundsHandlingMethod = (
+        OutOfBoundsHandlingMethod.IGNORE
+    )
 
     def __call__(self, x):
         self.num_evaluations += 1
@@ -53,19 +62,20 @@ class EvalCounter:
         xbest, ybest = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
-            if self.kill_outside_bounds:
+            if self.outside_bounds_handling == OutOfBoundsHandlingMethod.KILL:
                 raise OutOfBoundsError(
                     f"{self.identifier}: Evaluation out of bounds, stopping optimization after {self.num_evaluations} evals"
                 )
+            self.best_solutions.append((xbest, ybest))
 
-            msg = (
+            if self.outside_bounds_handling == OutOfBoundsHandlingMethod.PENALTY:
+                self.warn("Out of bounds evaluation detected. Applying penalty.")
+                return y + calculate_penalty(x, self.bounds)
+
+            self.warn(
                 "Out of bounds evaluation detected. Refusing to update best_solutions."
             )
-            if self.identifier:
-                msg = f"{self.identifier}: {msg}"
-            logger.warning(msg)
 
-            self.best_solutions.append((xbest, ybest))
             return y
 
         if not self.best_solutions or y < ybest:
@@ -74,6 +84,12 @@ class EvalCounter:
             self.best_solutions.append((xbest, ybest))
 
         return y
+
+    def warn(self, msg: str):
+        if self.identifier:
+            logger.warning(f"{self.identifier}: {msg}")
+        else:
+            logger.warning(msg)
 
     @property
     def best_so_far(self):
@@ -88,6 +104,7 @@ class EvalCounter:
             self.best_solutions[:],
             self.bounds,
             identifier,
+            self.outside_bounds_handling,
         )
 
 
