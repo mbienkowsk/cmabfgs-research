@@ -51,7 +51,7 @@ def wrap_plot(title: str, dim: int, ylabel: str, save_to: Path):
     if not MANUSCRIPT:
         ax.set_title(f"{title} ({dim} wymiarów)")
     else:
-        ax.set_title(f"D={dim}")
+        ax.set_title(f"d={dim}")
 
     yield
     ax.grid()
