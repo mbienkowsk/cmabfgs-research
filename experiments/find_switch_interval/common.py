@@ -77,7 +77,7 @@ class OptimumPosition(Enum):
                 label = "poza rogiem obszaru dopuszczalnego"
             case OptimumPosition.CORNER_NEAR:
                 label = "w samym rogu obszaru dopuszczalnego"
-        return f"{label} (granice: {bounds})"
+        return f"{label} (granice: $[{bounds[0]}$, ${bounds[1]}]^d$)"
 
 
 @dataclass

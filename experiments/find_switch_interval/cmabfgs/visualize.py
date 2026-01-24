@@ -57,7 +57,7 @@ class CMABFGSPlotter:
     def get_label_from_mul(self, mul: float) -> str:
         if mul == 0:
             return "BFGS"
-        return f"CMABFGS, $k_{{{'mul'}}}={mul}$"
+        return f"CMABFGS, $k={mul}$"
 
     def plot(self, agg_df: pd.DataFrame, cmaes_df: pd.DataFrame):
         configure_mpl_for_manuscript()
@@ -81,6 +81,9 @@ class CMABFGSPlotter:
                 y="mean",
                 label=self.get_label_from_mul(mul),  # pyright: ignore[reportArgumentType]
             )
+            # ax.fill_between(
+            #     mul_df["num_evaluations"], mul_df["q25"], mul_df["q75"], alpha=0.4
+            # )
 
         cmaes_df.plot(ax=ax, logy=True, y="best_cmaes", label="CMA-ES")
         ax.grid()
