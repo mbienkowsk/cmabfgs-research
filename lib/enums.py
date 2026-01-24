@@ -2,6 +2,7 @@ from enum import Enum
 
 import numpy as np
 
+from lib.plotting_util import tex
 from lib.util import make_symmetrical
 
 
@@ -12,17 +13,17 @@ class HessianNormalization(Enum):
     UNIT_DIVIDED_BY_DIM_ROOT = "unit_divided_by_dim_root"
 
     def to_plot_label(self):
-        from lib.plotting_util import tex
+        base = "||{B_0}|| = "
 
         match self:
             case HessianNormalization.UNIT:
-                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1")
+                return tex(base + "1")
             case HessianNormalization.UNIT_DIM:
-                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = d")
+                return tex(base + "d")
             case HessianNormalization.UNIT_DIVIDED_BY_DIM:
-                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1/d")
+                return tex(base + "1/d")
             case HessianNormalization.UNIT_DIVIDED_BY_DIM_ROOT:
-                return tex("\\sqrt{\\sum_{ij}{C_{ij}^2}} = 1/\\sqrt{d}")
+                return tex(base + "1/\\sqrt{d}")
 
     def normalize(self, mat: np.ndarray):
         match self:

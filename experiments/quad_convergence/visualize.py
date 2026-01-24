@@ -46,7 +46,7 @@ Preconditioning = int | Literal["identity", "inv_hess"]
 
 def preconditioning_label(preconditioning: Preconditioning) -> str:
     if isinstance(preconditioning, int):
-        return tex(f"H_{{{preconditioning}}}")
+        return tex(f"\\alpha_C C_{{{preconditioning}}}")
     elif preconditioning == "identity":
         return tex("I")
     else:
@@ -151,8 +151,14 @@ class BFGSAccelerationPlotter:
     ):
         def to_label(col: str):
             if (iters := extract_iterations_from_column(col)) is not None:
-                return str(iters)
-            return "I" if "identity" in col else "H_inv" if "inv_hess" in col else col
+                return tex(f"C_{{{iters}}}")
+            return (
+                tex("I")
+                if "identity" in col
+                else tex("H^{-1}")
+                if "inv_hess" in col
+                else col
+            )
 
         with self.new_ax() as ax:
             plot_with_legend_function(data, ax, to_label)
@@ -192,7 +198,7 @@ class BFGSAccelerationPlotter:
             plot_with_legend_function(data, ax, to_label)  # pyright: ignore[reportArgumentType]
 
         plt.title(
-            f"$d={self.dimensions}$, $H_{{inv0}}$={preconditioning_label(preconditioning)}"
+            f"$d={self.dimensions}$, $B_0$={preconditioning_label(preconditioning)}"
         )
 
         self.finalize_plot(f"by_norm_{preconditioning}", filename_suffix)
