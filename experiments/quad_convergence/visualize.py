@@ -280,7 +280,7 @@ if __name__ == "__main__":
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
     if debug:
-        plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=False)
+        plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=True)
         # plotter.plot_comparison_for_norm(HessianNormalization.UNIT)
     else:
         DIMS = [10, 20, 50, 100]

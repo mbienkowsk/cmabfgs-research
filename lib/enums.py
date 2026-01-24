@@ -47,4 +47,5 @@ class HessianNormalization(Enum):
             norm
             for norm in HessianNormalization
             if norm != HessianNormalization.UNIT_DIM
+            and norm != HessianNormalization.UNIT_DIVIDED_BY_DIM
         ]
