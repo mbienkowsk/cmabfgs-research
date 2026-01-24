@@ -182,7 +182,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     with wrap_plot(
         "Porównanie ilorazów odpowiadających sobie wartości własnych C i H_inv",
         dim,
-        "$\\lambda_{C}[i] / \\ lambda_{H_{inv}}[i]$",
+        "$\\lambda_{C}[i] / \\lambda_{H_{inv}}[i]$",
         save_dir / "corresp_eig_ratios.png",
     ):
         for i in range(len(actual_eigenvalues)):
