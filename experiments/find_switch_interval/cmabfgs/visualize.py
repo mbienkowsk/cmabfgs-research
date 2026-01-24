@@ -13,7 +13,7 @@ from experiments.find_switch_interval.cmabfgs.experiment_config import (
 from experiments.find_switch_interval.common import ObjectiveChoice, OptimumPosition
 from lib.enums import HessianNormalization
 from lib.plotting_util import configure_mpl_for_manuscript, set_log_x_labels
-from lib.util import evaluation_budget
+from lib.util import evaluation_budget, trim_constant_tail_pct
 
 ANY_INT = 0
 
@@ -40,6 +40,7 @@ class CMABFGSPlotter:
             / self.config.objective_choice.value
             / str(self.config.dimensions)
             / self.config.optimum_position.value
+            / "trimmed"
             / f"{self.config.hess_normalization.value}.png"
         )
 
@@ -74,18 +75,31 @@ class CMABFGSPlotter:
         secax.spines["bottom"].set_position(("outward", 80))
 
         for mul, mul_df in agg_df.groupby("multiplier"):
-            mul_df.plot(
-                ax=ax,
-                logy=True,
-                x="num_evaluations",
-                y="mean",
-                label=self.get_label_from_mul(mul),  # pyright: ignore[reportArgumentType]
+            trimmed = trim_constant_tail_pct(mul_df["mean"], pct=0.01)
+            plt.semilogy(
+                mul_df["num_evaluations"][: len(trimmed)],
+                trimmed,
+                label=self.get_label_from_mul(mul),
             )
+            # mul_df.plot(
+            #     ax=ax,
+            #     logy=True,
+            #     x="num_evaluations",
+            #     y="mean",
+            #     label=self.get_label_from_mul(mul),  # pyright: ignore[reportArgumentType]
+            # )
             # ax.fill_between(
             #     mul_df["num_evaluations"], mul_df["q25"], mul_df["q75"], alpha=0.4
             # )
 
-        cmaes_df.plot(ax=ax, logy=True, y="best_cmaes", label="CMA-ES")
+        trimmed_cmaes = trim_constant_tail_pct(
+            cmaes_df["best_cmaes"],  # pyright: ignore[reportArgumentType]
+            pct=0.01,
+        )
+        plt.semilogy(
+            cmaes_df.index[: len(trimmed_cmaes)], trimmed_cmaes, label="CMA-ES"
+        )
+        # cmaes_df.plot(ax=ax, logy=True, y="best_cmaes", label="CMA-ES")
         ax.grid()
         title = f"d={self.config.dimensions}, f={self.config.objective_choice.value}"
         if not self.config.objective_choice.value.startswith("CEC"):
@@ -121,8 +135,8 @@ if __name__ == "__main__":
         config = CMABFGSExperimentConfig(
             100,
             ANY_INT,
-            ObjectiveChoice.RASTRIGIN,
-            OptimumPosition.CORNER,
+            ObjectiveChoice.CEC16,
+            OptimumPosition.MIDDLE,
             True,
             HessianNormalization.UNIT,
         )

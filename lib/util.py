@@ -188,6 +188,33 @@ def make_symmetrical(arr: np.ndarray):
     return arr * 0.5 + arr.T * 0.5
 
 
+def trim_constant_tail_pct(
+    s: pd.Series, pct: float = 1e-6, leave_first_n: int = 3
+) -> pd.Series:
+    v = s.values
+    n = len(v)
+
+    cur_min = v[-1]
+    cur_max = v[-1]
+    start = n - 1
+
+    for i in range(n - 2, -1, -1):
+        cur_min = min(cur_min, v[i])
+        cur_max = max(cur_max, v[i])
+
+        if cur_max - cur_min <= pct * cur_min:
+            start = i
+        else:
+            break
+
+    # nothing but a constant tail
+    if start == 0:
+        return s.iloc[:1]
+
+    cutoff = min(n, start + 1 + leave_first_n)
+    return s.iloc[:cutoff]
+
+
 def trim_constant_tail(
     s: pd.Series, epsilon: float = 1e-11, leave_first_n: int = 3
 ) -> pd.Series:
