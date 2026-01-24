@@ -160,6 +160,7 @@ class CMABFGSPostprocessor:
         agg_cmaes = aggregate_dataframes(
             [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")],  # pyright: ignore[reportArgumentType]
             None,
+            add_quartiles=True,
         )
 
         grouped = list(raw.groupby("run_id"))
