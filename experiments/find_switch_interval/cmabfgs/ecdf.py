@@ -46,7 +46,7 @@ def plot_save_path(config: CMABFGSExperimentConfig):
         / config.objective_choice.value
         / str(config.dimensions)
         / config.optimum_position.value
-        / f"{config.hess_normalization.value}.png"
+        / f"{config.hess_normalization.value}.svg"
     )
 
 
@@ -195,7 +195,7 @@ def plot_ecdf(
     ax.set_xscale("log")
     ax.set_title(title)
     ax.set_xlabel("Liczba ewaluacji funkcji celu")
-    ax.set_ylabel("Liczba obserwacji powyżej bariery")
+    ax.set_ylabel("Ułamek osiągniętych poziomów satysfakcji")
     ax.grid()
     ax.legend()
 
@@ -272,8 +272,8 @@ def plot_cec_ecdfs_with_auc(
 
     plot_ecdf(
         ecdf_df=ecdf_all,
-        title=f"ECDF (d={dimensions}, {hess_normalization.to_plot_label()})",
-        save_path=save_dir / "agg_ecdf.png",
+        title=f"ECDF (d={dimensions})",
+        save_path=save_dir / "agg_ecdf.svg",
         show=False,
         label_fn=label_fn,
     )
