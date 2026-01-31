@@ -46,7 +46,7 @@ def plot_save_path(config: CMABFGSExperimentConfig):
         / config.objective_choice.value
         / str(config.dimensions)
         / config.optimum_position.value
-        / f"{config.hess_normalization.value}.svg"
+        / f"{config.hess_normalization.value}.png"
     )
 
 
@@ -273,7 +273,7 @@ def plot_cec_ecdfs_with_auc(
     plot_ecdf(
         ecdf_df=ecdf_all,
         title=f"ECDF (d={dimensions})",
-        save_path=save_dir / "agg_ecdf.svg",
+        save_path=save_dir / "agg_ecdf.png",
         show=False,
         label_fn=label_fn,
     )
