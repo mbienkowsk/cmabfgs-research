@@ -1,5 +1,6 @@
 from typing import Callable
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -8,10 +9,12 @@ def tex(text: str):
     return f"${text}$"
 
 
-def configure_mpl_for_manuscript():
-    import matplotlib as mpl
+def set_mpl_font_size(size: int):
+    mpl.rcParams["font.size"] = size
 
-    mpl.rcParams["font.size"] = 24
+
+def configure_mpl_for_manuscript(font_size: int = 24):
+    set_mpl_font_size(font_size)
     mpl.rcParams["font.family"] = "serif"
     mpl.rcParams["mathtext.fontset"] = "cm"
     mpl.rcParams["lines.linewidth"] = 3
