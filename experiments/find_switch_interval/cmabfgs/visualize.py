@@ -87,7 +87,12 @@ class CMABFGSPlotter:
 
         cmaes_df.plot(ax=ax, logy=True, y="best_cmaes", label="CMA-ES")
         ax.grid()
-        title = f"d={self.config.dimensions}, f={self.config.objective_choice.value}"
+        fun_name = (
+            self.config.objective_choice.value
+            if self.config.objective_choice != ObjectiveChoice.ELLIPTIC
+            else "SDP"
+        )
+        title = f"d={self.config.dimensions}, f={fun_name}"
         if not self.config.objective_choice.value.startswith("CEC"):
             title += f"\n optimum {self.config.optimum_position.to_plot_label()}"
 
