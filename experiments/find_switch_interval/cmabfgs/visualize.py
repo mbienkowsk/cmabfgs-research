@@ -21,18 +21,34 @@ ANY_INT = 0
 @dataclass
 class CMABFGSPlotter:
     config: CMABFGSExperimentConfig
+    with_removed_outliers: bool = False
     save_to_disk: bool = True
 
     @property
     def raw_curves_input_file(self):
-        return self.config.output_directory / "raw_curves.parquet"
+        filename = (
+            "raw_curves.parquet"
+            if not self.with_removed_outliers
+            else "raw_curves_no_outliers.parquet"
+        )
+        return self.config.output_directory / filename
 
     @property
-    def agg_curves_input_file(self):
-        return self.config.output_directory / "agg_curves.parquet"
+    def agg_curves_output_file(self):
+        filename = (
+            "agg_curves.parquet"
+            if not self.with_removed_outliers
+            else "agg_curves_no_outliers.parquet"
+        )
+        return self.config.output_directory / filename
 
     @property
     def plot_save_path(self):
+        filename = (
+            f"{self.config.hess_normalization.value}.png"
+            if not self.with_removed_outliers
+            else f"{self.config.hess_normalization.value}_no_outliers.png"
+        )
         return (
             Path(__file__).parent
             / "results"
@@ -40,7 +56,7 @@ class CMABFGSPlotter:
             / self.config.objective_choice.value
             / str(self.config.dimensions)
             / self.config.optimum_position.value
-            / f"{self.config.hess_normalization.value}.png"
+            / filename
         )
 
     @property
