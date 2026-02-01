@@ -42,3 +42,26 @@ def aggregate_dataframes(
     q75 = stacked.quantile(0.75).add_suffix("_q75")
 
     return pd.concat([mean_df, q25, q75], axis=1)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def aggregate_convergence_series(
+    ss: Iterable[pd.Series], remove_outliers: bool = False
+):
+    common_index = pd.Index(sorted(set().union(*(s.index for s in ss))))
+    aligned = [
+        s.reindex(common_index).interpolate(method="index", limit_direction="both")
+        for s in ss
+    ]
+    stacked = pd.concat(aligned, axis=1)
+    if remove_outliers:
+        stacked = stacked.apply(lambda r: r.sort_values().iloc[1:-1], axis=1)
+    out = pd.DataFrame(
+        {
+            "mean": stacked.mean(axis=1),
+            "median": stacked.median(axis=1),
+            "q25": stacked.quantile(0.25, axis=1),  # pyright: ignore[reportCallIssue]
+            "q75": stacked.quantile(0.75, axis=1),  # pyright: ignore[reportCallIssue]
+        }
+    )
+    out.index = out.index.rename("num_evaluations")
+    return out

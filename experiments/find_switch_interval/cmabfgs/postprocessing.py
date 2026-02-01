@@ -3,7 +3,6 @@ import re
 from dataclasses import dataclass, field
 from itertools import product
 
-import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
@@ -17,6 +16,7 @@ from experiments.find_switch_interval.common import (
     OptimumPosition,
 )
 from lib.enums import HessianNormalization
+from lib.serde import aggregate_convergence_series
 from lib.util import compress_and_save, summarize_data
 
 ANY_INT = 0
@@ -165,28 +165,6 @@ class CMABFGSPostprocessor:
             df = pd.read_parquet(self.agg_cmaes_output_file)
             summarize_data(df)
 
-    def aggregate_cmaes_dfs(self, dfs: list[pd.DataFrame]):
-        common_index = np.unique(np.concatenate([df.index.values for df in dfs]))  # pyright: ignore[reportCallIssue, reportArgumentType]
-
-        aligned = [
-            df.reindex(common_index).interpolate(method="index", limit_direction="both")
-            for df in dfs
-        ]
-        stacked = pd.concat(aligned, axis=1)
-        if self.remove_outliers:
-            stacked = stacked.apply(lambda r: r.sort_values().iloc[1:-1], axis=1)
-
-        out = pd.DataFrame(
-            {
-                "mean": stacked.mean(axis=1),
-                "median": stacked.median(axis=1),
-                "q25": stacked.quantile(0.25, axis=1),  # pyright: ignore[reportCallIssue]
-                "q75": stacked.quantile(0.75, axis=1),  # pyright: ignore[reportCallIssue]
-            }
-        )
-        out.index = out.index.rename("num_evaluations")
-        return out
-
     def run(self, n_jobs: int = -1):
         try:
             raw = pd.read_parquet(self.input_file)
@@ -194,7 +172,7 @@ class CMABFGSPostprocessor:
             logger.error(f"MISSING RUN FILE FOR CONFIGURATION {self.config}")
             return
         cmaes_series = [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")]
-        agg_cmaes = self.aggregate_cmaes_dfs(cmaes_series)  # pyright: ignore[reportArgumentType]
+        agg_cmaes = aggregate_convergence_series(cmaes_series, self.remove_outliers)  # pyright: ignore[reportArgumentType]
 
         grouped = list(raw.groupby("run_id"))
 
@@ -219,31 +197,12 @@ class CMABFGSPostprocessor:
                 curves.append(s)
                 grids.append(s.index)
 
-            grid = pd.Index(sorted(set().union(*grids)))
-
-            aligned = [
-                s.reindex(grid).interpolate(method="index", limit_direction="both")
-                for s in curves
-            ]
-
-            stacked = pd.concat(aligned, axis=1)
-
-            if self.remove_outliers:
-                stacked = stacked.apply(lambda r: r.sort_values().iloc[1:-1], axis=1)
-
-            out = pd.DataFrame(
-                {
-                    "mean": stacked.mean(axis=1),
-                    "median": stacked.median(axis=1),
-                    "q25": stacked.quantile(0.25, axis=1),  # pyright: ignore[reportCallIssue]
-                    "q75": stacked.quantile(0.75, axis=1),  # pyright: ignore[reportCallIssue]
-                }
+            agg = (
+                aggregate_convergence_series(curves, self.remove_outliers)
+                .reset_index()
+                .assign(multiplier=mul)
             )
-            out.index = out.index.rename("num_evaluations")
-
-            out = out.reset_index().assign(multiplier=mul)
-
-            results.append(out)
+            results.append(agg)
 
         return pd.concat(results, ignore_index=True)
 
@@ -259,14 +218,14 @@ if __name__ == "__main__":
 
     if debug:
         config = CMABFGSExperimentConfig(
-            100,
+            10,
             ANY_INT,
             ObjectiveChoice.CEC1,
             OptimumPosition.MIDDLE,
             True,
             HessianNormalization.UNIT,
         )
-        CMABFGSPostprocessor(config).run()
+        CMABFGSPostprocessor(config, remove_outliers=False).run()
 
     else:
         hess_norms = [
