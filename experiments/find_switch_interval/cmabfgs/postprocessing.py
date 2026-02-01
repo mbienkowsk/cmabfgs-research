@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass, field
 from itertools import product
 
+import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
@@ -16,7 +17,6 @@ from experiments.find_switch_interval.common import (
     OptimumPosition,
 )
 from lib.enums import HessianNormalization
-from lib.serde import aggregate_dataframes
 from lib.util import compress_and_save, summarize_data
 
 ANY_INT = 0
@@ -25,6 +25,7 @@ ANY_INT = 0
 @dataclass
 class CMABFGSPostprocessor:
     config: CMABFGSExperimentConfig
+    remove_outliers: bool = False
     multipliers: list[float] = field(
         init=False, default_factory=lambda: [0.5, 1.0, 2.0, 4.0, 8.0]
     )
@@ -35,15 +36,28 @@ class CMABFGSPostprocessor:
 
     @property
     def raw_curves_output_file(self):
-        return self.config.output_directory / "raw_curves.parquet"
+        filename = (
+            "raw_curves.parquet"
+            if not self.remove_outliers
+            else "raw_curves_no_outliers.parquet"
+        )
+        return self.config.output_directory / filename
 
     @property
     def agg_curves_output_file(self):
-        return self.config.output_directory / "agg_curves.parquet"
+        filename = (
+            "agg_curves.parquet"
+            if not self.remove_outliers
+            else "agg_curves_no_outliers.parquet"
+        )
+        return self.config.output_directory / filename
 
     @property
     def agg_cmaes_output_file(self):
-        return self.config.input_file.parent / "agg.parquet"
+        filename = (
+            "agg.parquet" if not self.remove_outliers else "agg_no_outliers.parquet"
+        )
+        return self.config.input_file.parent / filename
 
     def is_divisible_by_multiplier(self, label: str, multiplier: float):
         iters = int(self.config.dimensions * multiplier)
@@ -151,17 +165,36 @@ class CMABFGSPostprocessor:
             df = pd.read_parquet(self.agg_cmaes_output_file)
             summarize_data(df)
 
+    def aggregate_cmaes_dfs(self, dfs: list[pd.DataFrame]):
+        common_index = np.unique(np.concatenate([df.index.values for df in dfs]))  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+        aligned = [
+            df.reindex(common_index).interpolate(method="index", limit_direction="both")
+            for df in dfs
+        ]
+        stacked = pd.concat(aligned, axis=1)
+        if self.remove_outliers:
+            stacked = stacked.apply(lambda r: r.sort_values().iloc[1:-1], axis=1)
+
+        out = pd.DataFrame(
+            {
+                "mean": stacked.mean(axis=1),
+                "median": stacked.median(axis=1),
+                "q25": stacked.quantile(0.25, axis=1),  # pyright: ignore[reportCallIssue]
+                "q75": stacked.quantile(0.75, axis=1),  # pyright: ignore[reportCallIssue]
+            }
+        )
+        out.index = out.index.rename("num_evaluations")
+        return out
+
     def run(self, n_jobs: int = -1):
         try:
             raw = pd.read_parquet(self.input_file)
         except Exception:
             logger.error(f"MISSING RUN FILE FOR CONFIGURATION {self.config}")
             return
-        agg_cmaes = aggregate_dataframes(
-            [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")],  # pyright: ignore[reportArgumentType]
-            None,
-            add_quartiles=True,
-        )
+        cmaes_series = [df[["best_cmaes"]].dropna() for _, df in raw.groupby("run_id")]
+        agg_cmaes = self.aggregate_cmaes_dfs(cmaes_series)  # pyright: ignore[reportArgumentType]
 
         grouped = list(raw.groupby("run_id"))
 
@@ -174,8 +207,7 @@ class CMABFGSPostprocessor:
         agg = self.aggregate_curves(raw)
         self.archive_data(raw, agg, agg_cmaes)
 
-    @staticmethod
-    def aggregate_curves(df: pd.DataFrame) -> pd.DataFrame:
+    def aggregate_curves(self, df: pd.DataFrame) -> pd.DataFrame:
         results = []
 
         for mul, df_mul in df.groupby("multiplier"):
@@ -190,18 +222,21 @@ class CMABFGSPostprocessor:
             grid = pd.Index(sorted(set().union(*grids)))
 
             aligned = [
-                s.reindex(grid).interpolate(method="index").ffill().bfill()
+                s.reindex(grid).interpolate(method="index", limit_direction="both")
                 for s in curves
             ]
 
             stacked = pd.concat(aligned, axis=1)
 
+            if self.remove_outliers:
+                stacked = stacked.apply(lambda r: r.sort_values().iloc[1:-1], axis=1)
+
             out = pd.DataFrame(
                 {
                     "mean": stacked.mean(axis=1),
                     "median": stacked.median(axis=1),
-                    "q25": stacked.quantile(0.25, axis=1),
-                    "q75": stacked.quantile(0.75, axis=1),
+                    "q25": stacked.quantile(0.25, axis=1),  # pyright: ignore[reportCallIssue]
+                    "q75": stacked.quantile(0.75, axis=1),  # pyright: ignore[reportCallIssue]
                 }
             )
             out.index = out.index.rename("num_evaluations")
@@ -214,7 +249,7 @@ class CMABFGSPostprocessor:
 
 
 def process_config(config: CMABFGSExperimentConfig):
-    processor = CMABFGSPostprocessor(config)
+    processor = CMABFGSPostprocessor(config, True)
     processor.run()
 
 
@@ -266,7 +301,8 @@ if __name__ == "__main__":
             )
         ]
 
-        all_configurations = cec_configurations + control_configurations
+        # all_configurations = cec_configurations + control_configurations
+        all_configurations = control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
             delayed(process_config)(config) for config in all_configurations
