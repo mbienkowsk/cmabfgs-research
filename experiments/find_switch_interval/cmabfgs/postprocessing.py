@@ -207,8 +207,8 @@ class CMABFGSPostprocessor:
         return pd.concat(results, ignore_index=True)
 
 
-def process_config(config: CMABFGSExperimentConfig):
-    processor = CMABFGSPostprocessor(config, True)
+def process_config(config: CMABFGSExperimentConfig, remove_outliers: bool = False):
+    processor = CMABFGSPostprocessor(config, remove_outliers=remove_outliers)
     processor.run()
 
 
@@ -226,6 +226,37 @@ if __name__ == "__main__":
             HessianNormalization.UNIT,
         )
         CMABFGSPostprocessor(config, remove_outliers=False).run()
+
+    elif os.getenv("BATCHED"):
+        try:
+            remove_outliers = bool(os.environ["REMOVE_OUTLIERS"])
+            dims = int(os.environ["DIMENSIONS"])
+            fn = ObjectiveChoice(os.environ["OBJECTIVE_CHOICE"])
+
+            if fn in ObjectiveChoice.all_cec_objectives():
+                optimum_positions = [OptimumPosition.MIDDLE]
+            else:
+                optimum_positions = list(OptimumPosition)
+
+            configurations = [
+                CMABFGSExperimentConfig(
+                    dims,
+                    ANY_INT,
+                    fn,
+                    optimum_position,
+                    False,
+                )
+                for optimum_position in optimum_positions
+            ]
+
+            Parallel(n_jobs=-1, backend="loky")(
+                delayed(process_config)(config, remove_outliers)
+                for config in configurations
+            )
+
+        except KeyError as e:
+            logger.error(f"Environment variable {e} is not set.")
+            raise e
 
     else:
         hess_norms = [

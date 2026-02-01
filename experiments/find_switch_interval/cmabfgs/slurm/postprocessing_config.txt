@@ -1,0 +1,9 @@
+1   (REMOVE_OUTLIERS_BOOL)
+10  Rastrigin
+20  Rastrigin
+50  Rastrigin
+100 Rastrigin
+10  Elliptic
+20  Elliptic
+50  Elliptic
+100 Elliptic

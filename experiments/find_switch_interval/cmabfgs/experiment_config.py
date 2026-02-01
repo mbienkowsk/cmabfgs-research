@@ -13,7 +13,7 @@ from lib.util import evaluation_budget
 @dataclass
 class CMABFGSExperimentConfig(ExperimentConfigBase):
     max_evals: int = field(init=False)
-    hess_normalization: HessianNormalization = HessianNormalization.UNIT_DIM
+    hess_normalization: HessianNormalization = HessianNormalization.UNIT
 
     def __post_init__(self):
         super().__post_init__()
