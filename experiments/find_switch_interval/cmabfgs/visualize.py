@@ -34,7 +34,7 @@ class CMABFGSPlotter:
         return self.config.output_directory / filename
 
     @property
-    def agg_curves_output_file(self):
+    def agg_curves_input_file(self):
         filename = (
             "agg_curves.parquet"
             if not self.with_removed_outliers
@@ -129,8 +129,10 @@ class CMABFGSPlotter:
         self.plot(agg_df, cmaes_df)
 
 
-def plot_config(config: CMABFGSExperimentConfig):
-    plotter = CMABFGSPlotter(config, save_to_disk=True)
+def plot_config(config: CMABFGSExperimentConfig, with_removed_outliers: bool):
+    plotter = CMABFGSPlotter(
+        config, save_to_disk=True, with_removed_outliers=with_removed_outliers
+    )
     plotter.run()
 
 
@@ -143,13 +145,14 @@ if __name__ == "__main__":
             100,
             ANY_INT,
             ObjectiveChoice.RASTRIGIN,
-            OptimumPosition.CORNER,
+            OptimumPosition.MIDDLE,
             True,
             HessianNormalization.UNIT,
         )
-        CMABFGSPlotter(config, save_to_disk=False).run()
+        CMABFGSPlotter(config, with_removed_outliers=True, save_to_disk=False).run()
 
     else:
+        REMOVE_OUTLIERS = True
         cec_optimum_positions = [
             OptimumPosition.MIDDLE,
         ]
@@ -179,8 +182,10 @@ if __name__ == "__main__":
                 control_dims, control_objectives, control_optimum_positions, hess_norms
             )
         ]
-        all_configurations = cec_configurations + control_configurations
+        # all_configurations = cec_configurations + control_configurations
+        all_configurations = control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
-            delayed(plot_config)(config) for config in all_configurations
+            delayed(plot_config)(config, REMOVE_OUTLIERS)
+            for config in all_configurations
         )

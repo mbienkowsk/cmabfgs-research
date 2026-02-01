@@ -291,8 +291,7 @@ if __name__ == "__main__":
             )
         ]
 
-        # all_configurations = cec_configurations + control_configurations
-        all_configurations = control_configurations
+        all_configurations = cec_configurations + control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
             delayed(process_config)(config) for config in all_configurations
