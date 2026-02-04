@@ -100,7 +100,7 @@ def visualize_results(df: pd.DataFrame, dim: int, save_dir: Path):
     with wrap_plot(
         "długości półosi rozkładu populacji",
         dim,
-        "$\\sqrt{(\\lambda_i)\\sigma}$",
+        "$\\sqrt{\\lambda_i}\\sigma$",
         save_dir / "axis_lengths.png",
     ):
         for i in range(ndim):
