@@ -61,7 +61,12 @@ class CMABFGSPlotter:
 
     @property
     def cmaes_input_file(self):
-        return self.config.input_file.parent / "agg.parquet"
+        filename = (
+            "agg.parquet"
+            if not self.with_removed_outliers
+            else "agg_no_outliers.parquet"
+        )
+        return self.config.input_file.parent / filename
 
     def load_agg_df(self):
         df = pd.read_parquet(self.agg_curves_input_file)
@@ -101,7 +106,7 @@ class CMABFGSPlotter:
             #     mul_df["num_evaluations"], mul_df["q25"], mul_df["q75"], alpha=0.4
             # )
 
-        cmaes_df.plot(ax=ax, logy=True, y="best_cmaes", label="CMA-ES")
+        cmaes_df.plot(ax=ax, logy=True, y="mean", label="CMA-ES")
         ax.grid()
         fun_name = (
             self.config.objective_choice.value
@@ -152,7 +157,7 @@ if __name__ == "__main__":
         CMABFGSPlotter(config, with_removed_outliers=True, save_to_disk=False).run()
 
     else:
-        REMOVE_OUTLIERS = True
+        remove_outliers_variants = [True, False]
         cec_optimum_positions = [
             OptimumPosition.MIDDLE,
         ]
@@ -186,6 +191,8 @@ if __name__ == "__main__":
         all_configurations = control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
-            delayed(plot_config)(config, REMOVE_OUTLIERS)
-            for config in all_configurations
+            delayed(plot_config)(config, remove_outliers)
+            for (config, remove_outliers) in product(
+                all_configurations, remove_outliers_variants
+            )
         )

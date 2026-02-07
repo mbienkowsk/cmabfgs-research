@@ -260,9 +260,9 @@ if __name__ == "__main__":
 
     else:
         hess_norms = [
-            HessianNormalization.UNIT_DIM,
             HessianNormalization.UNIT,
         ]
+        remove_outliers_variants = [True, False]
 
         # CEC configurations
         cec_optimum_positions = [
@@ -294,5 +294,8 @@ if __name__ == "__main__":
         all_configurations = cec_configurations + control_configurations
 
         Parallel(n_jobs=-1, backend="loky")(
-            delayed(process_config)(config) for config in all_configurations
+            delayed(process_config)(config, remove_outliers)
+            for (config, remove_outliers) in product(
+                all_configurations, remove_outliers_variants
+            )
         )
