@@ -46,7 +46,7 @@ Preconditioning = int | Literal["identity", "inv_hess"]
 
 def preconditioning_label(preconditioning: Preconditioning) -> str:
     if isinstance(preconditioning, int):
-        return tex(f"\\alpha_C C_{{{preconditioning}}}")
+        return tex(f"\\alpha C_{{{preconditioning}}}")
     elif preconditioning == "identity":
         return tex("I")
     else:
@@ -286,8 +286,14 @@ if __name__ == "__main__":
     debug = bool(os.getenv("DEBUG", ""))
     print(f"Debug mode: {debug}")
     if debug:
-        plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=True)
-        # plotter.plot_comparison_for_norm(HessianNormalization.UNIT)
+        plotter = BFGSAccelerationPlotter(100, "inherited", save_to_disk=False)
+        data = filter_for_preconditioning(plotter.df, 1200)
+        norm = HessianNormalization.UNIT
+        data = filter_for_normalization_method(data, norm)
+        plotter.plot_comparison_for_preconditioning_from_starting_point(
+            data, 1200, norm
+        )
+        plt.show()
     else:
         DIMS = [10, 20, 50, 100]
 
