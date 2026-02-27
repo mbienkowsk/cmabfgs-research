@@ -1,0 +1,14 @@
+defaults:
+  - shared
+  - _self_
+
+optimizer:
+  name: cmabfgs
+  k: 1
+  scaling: unit
+
+hydra:
+  sweeper:
+    params:
+      optimizer.k: range(1,2.1,0.5)
+      optimizer.scaling: unit
