@@ -1,5 +1,7 @@
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
+from lib.enums import HessianNormalization
 from lib.optimizers.bfgs import BFGS
 from lib.optimizers.cmaes import CMAES
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
@@ -20,13 +22,13 @@ class MultiCMABFGS(Optimizer):
         seed: int,
         fun: EvalCounter,
         popsize: int,
-        callback: "MetricsCollector",
+        callbacks: Iterable["MetricsCollector"],
         cmaes_stopper: CMAESEarlyStopping,
         maxevals: int,
         bounds: tuple[float, float] = (-100, 100),
         sigma: int = 1,
-        restart_cmaes: bool = False,  # TODO: implement
-        precondition: bool = False,
+        hess_scaling: HessianNormalization = HessianNormalization.UNIT,
+        precondition_using_C: bool = True,
     ):
         self.nums_cmaes_iterations = nums_cmaes_iterations
         self.cmaes = CMAES(
@@ -35,17 +37,17 @@ class MultiCMABFGS(Optimizer):
             popsize,
             seed,
             cmaes_stopper,
-            callback,
+            list(callbacks),
             bounds,
             sigma,
             identifier="vanilla_cmaes",
         )
         self.seed = seed
         self.fun = fun
-        self.callback = callback
+        self.callbacks = callbacks
         self.maxevals = maxevals
         self.bounds = bounds
-        self.precondition = precondition
+        self.precondition = precondition_using_C
         self.x0 = x0
 
     def optimize(self):
@@ -63,18 +65,22 @@ class MultiCMABFGS(Optimizer):
             identifier = str(self.nums_cmaes_iterations[idx])
             fun = self.fun.copy_with_identifier(f"bfgs_{identifier}")
             # bfgs gets its own eval counter
-            self.callback(self.cmaes.state, identifier)
+            for callback in self.callbacks:
+                callback(self.cmaes.state, identifier)
 
             bfgs = BFGS(
                 self.cmaes.mean,
                 fun,
-                self.callback,
+                self.callbacks,
                 BFGSEarlyStopping(self.maxevals),
                 self.bounds,
                 identifier=identifier,
                 hess_inv0=hess_inv0,
             )
-            self.callback(bfgs.state, identifier)
+
+            for callback in self.callbacks:
+                callback(bfgs.state, identifier)
+
             bfgs.optimize()
             self.cmaes.state.counter.num_evaluations = bfgs.state.num_evaluations
 
