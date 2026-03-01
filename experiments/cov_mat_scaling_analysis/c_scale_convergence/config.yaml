@@ -1,0 +1,11 @@
+num_runs: 25
+dimensions: 10
+popsize: "hansen"
+lb: -5.0
+ub: 5.0
+runner: slurm
+
+hydra:
+  sweeper:
+    params:
+      dimensions: 10,20,50,100

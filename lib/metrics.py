@@ -150,6 +150,15 @@ class CovarianceMatrix(Metric):
         return list(np.ravel(C)) if self.serialize else C
 
 
+@dataclass
+class CovarianceMatrixNorm(Metric):
+    def key(self):
+        return "cov_mat_norm"
+
+    def collect_cmaes(self, state: CMAESState):
+        return np.linalg.norm(state.covariance_matrix)
+
+
 class BestXSoFar(Metric):
     def key(self):
         return "xbest"

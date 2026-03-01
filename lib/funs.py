@@ -49,6 +49,11 @@ def elliptic_hess_for_dim(dim: int):
     return sp.lambdify([x], hessian_sym, modules="numpy")(np.zeros((dim, dim)))
 
 
+def elliptic_hess_inv_for_dim(dim: int):
+    hess = elliptic_hess_for_dim(dim)
+    return np.linalg.inv(hess)
+
+
 Elliptic = OptFun(elliptic, elliptic_grad, "Elliptic", 0)
 
 

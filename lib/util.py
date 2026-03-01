@@ -1,3 +1,4 @@
+import math
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -8,6 +9,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from sympy import prime
+from tqdm import tqdm
 
 from lib.bound_handling import OutOfBoundsError, check_bounds
 
@@ -201,3 +203,11 @@ def trim_constant_tail(
 
 def evaluation_budget(dim: int):
     return 10_000 * dim
+
+
+def hansen_cmaes_popsize(d: int):
+    return 4 + math.floor(3 * math.log(d))
+
+
+def run_indices_pgbar(num_runs: int, prompt: str = ""):
+    return tqdm(range(1, num_runs + 1), prompt or "Processing runs...")
