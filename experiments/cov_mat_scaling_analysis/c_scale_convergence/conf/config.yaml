@@ -7,6 +7,7 @@ dimensions: 10
 popsize: "hansen"
 lb: -5.0
 ub: 5.0
+mode: postprocessing
 
 hydra:
   sweeper:

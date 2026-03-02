@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import hydra
 import matplotlib.pyplot as plt
@@ -31,6 +32,7 @@ from lib.util import (
 
 @dataclass
 class CScaleConvergenceExperimentConfig:
+    mode: Literal["run", "postprocess"]
     num_runs: int
     dimensions: int
     popsize: int
@@ -63,7 +65,12 @@ class CScaleConvergenceExperimentConfig:
             case _:
                 raise NotImplementedError(f"Popsize {ps} not supported")
         return cls(
-            num_runs=num_runs, dimensions=dimensions, popsize=popsize, lb=lb, ub=ub
+            mode=cfg["mode"],  # pyright: ignore[reportIndexIssue]
+            num_runs=num_runs,
+            dimensions=dimensions,
+            popsize=popsize,
+            lb=lb,
+            ub=ub,
         )
 
 
@@ -142,6 +149,7 @@ class CScaleConvergenceExperiment:
         axes[0].set_xlabel("num_evaluations")
         axes[0].set_ylabel("value")
         axes[0].legend()
+        axes[0].set_yscale("log")
 
         df_long = df.melt(
             id_vars=["num_evaluations", "run_id"],
@@ -162,6 +170,7 @@ class CScaleConvergenceExperiment:
         axes[1].set_title("sigma i norma macierzy kowariancji")
         axes[1].set_xlabel("num_evaluations")
         axes[1].set_ylabel("value")
+        axes[1].set_yscale("log")
 
         sns.lineplot(
             data=df,
@@ -187,8 +196,13 @@ class CScaleConvergenceExperiment:
 def main(cfg: OmegaConf):
     config = CScaleConvergenceExperimentConfig.from_omegaconf(cfg)
     config.result_dir.mkdir(parents=True, exist_ok=True)
-    exp = CScaleConvergenceExperiment(config)
-    exp.run()
+    if config.mode == "run":
+        exp = CScaleConvergenceExperiment(config)
+        exp.run()
+    else:
+        df = pd.read_parquet(config.result_dir / "raw.parquet")
+        exp = CScaleConvergenceExperiment(config)
+        exp.visualize(df)
 
 
 if __name__ == "__main__":

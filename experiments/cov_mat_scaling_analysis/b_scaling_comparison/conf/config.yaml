@@ -8,6 +8,8 @@ bounds: 5.0
 scaling: adaptive
 noise: 0
 
+mode: postprocessing
+
 hydra:
   sweeper:
     params:

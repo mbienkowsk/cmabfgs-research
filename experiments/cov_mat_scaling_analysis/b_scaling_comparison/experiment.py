@@ -186,8 +186,9 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
         dfs.append(df_agg)
 
     df_all = pd.concat(dfs).reset_index()
-    df_all["scaling"] = df_all["scaling"].fillna("adaptive")
     plt.figure(figsize=(8, 5))
+
+    df_all["scaling"] = df_all["scaling"].astype("category")
 
     sns.lineplot(
         data=df_all,
@@ -197,9 +198,11 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
     )
 
     plt.yscale("log")
-    plt.title("Krzywe zbieżności w zależności od skalowania")
+    plt.title(
+        f"Krzywe zbieżności w zależności od skalowania; d={config.dimensions}, ograniczenia={config.bounds}"
+    )
     plt.tight_layout()
-    plt.show()
+    plt.savefig(config.result_dir / "plot.png", dpi=300)
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
