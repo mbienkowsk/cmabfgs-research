@@ -12,6 +12,7 @@ from loguru import logger
 from omegaconf import OmegaConf
 
 import lib.metrics as m
+from lib.bound_handling import BoundEnforcement
 from lib.funs import elliptic_hess_inv_for_dim, get_function_by_name
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers import CMAES
@@ -79,7 +80,7 @@ class CScaleConvergenceExperiment:
         counter = EvalCounter(
             fn,  # pyright: ignore[reportArgumentType]
             bounds=self.cfg.bounds,
-            kill_outside_bounds=False,
+            bound_enforcement_method=BoundEnforcement.IGNORE_SOLUTIONS,
         )
         cma = CMAES(
             fun=counter,

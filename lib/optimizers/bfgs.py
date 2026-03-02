@@ -41,8 +41,8 @@ class BFGS(Optimizer):
         callback: "MetricsCollector",
         stopper: BFGSEarlyStopping,
         bounds: tuple[float, float],
-        identifier: str = "",
         hess_inv0: np.ndarray | None = None,
+        identifier: str = "",
     ):
         self.x0 = x0
         self.inner = None
