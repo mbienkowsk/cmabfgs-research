@@ -91,7 +91,7 @@ def scale_hess_by_probing(
     fun: ObjectiveFunction,
     x0: np.ndarray,
     B: np.ndarray,
-    probe_step_size=1e-5,
+    probe_step_size=1e-3,
 ):
     g0 = central_diff_jac(
         fun,
