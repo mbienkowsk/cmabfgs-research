@@ -7,6 +7,8 @@ import sympy as sp
 
 from lib.cec import get_cec2017_for_dim
 
+type ObjectiveFunction = Callable[[np.ndarray], float]
+
 
 @dataclass
 class OptFun:

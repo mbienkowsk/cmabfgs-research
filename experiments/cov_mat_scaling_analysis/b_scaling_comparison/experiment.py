@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Literal
 
 import hydra
+import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
 from omegaconf import OmegaConf
 
 from lib.bound_handling import BoundEnforcement
-from lib.funs import elliptic_hess_inv_for_dim, get_function_by_name
+from lib.funs import ObjectiveFunction, elliptic_hess_inv_for_dim, get_function_by_name
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers import BFGS
@@ -56,6 +57,57 @@ class BScaleComparisonExperimentConfig:
         )
 
 
+def central_diff_jac(fun, x):
+    x = np.asarray(x, dtype=float)
+    n = x.size
+
+    rel_step = np.sqrt(np.finfo(float).eps)
+    h = rel_step * np.maximum(1.0, np.abs(x))
+
+    grad = np.empty(n, dtype=float)
+
+    for i in range(n):
+        x_f = x.copy()
+        x_b = x.copy()
+
+        x_f[i] += h[i]
+        x_b[i] -= h[i]
+
+        f_f = fun(x_f)
+        f_b = fun(x_b)
+
+        grad[i] = (f_f - f_b) / (2.0 * h[i])
+
+    return grad
+
+
+def scale_hess_by_probing(
+    fun: ObjectiveFunction,
+    x0: np.ndarray,
+    B: np.ndarray,
+    probe_step_size=1e-5,
+):
+    g0 = central_diff_jac(
+        fun,
+        x0,
+    )
+    sd = B.dot(g0)
+    sd_norm = sd / np.linalg.norm(sd)
+
+    x_probe = x0 - probe_step_size * sd_norm
+    g_probe = central_diff_jac(fun, x_probe)
+
+    p = x_probe - x0
+    y = g_probe - g0
+
+    b = np.dot(y, p)
+    a = np.dot(y, np.dot(B, y))
+    # alpha = y.T @ p / (y.T @ B @ y)
+
+    alpha = b / a
+    return alpha * B
+
+
 @dataclass
 class BScaleComparisonExperiment:
     cfg: BScaleComparisonExperimentConfig
@@ -70,15 +122,20 @@ class BScaleComparisonExperiment:
             bound_enforcement_method=BoundEnforcement.ADDITIVE_PENALTY,
         )
         hess_inv = elliptic_hess_inv_for_dim(self.cfg.dimensions)
+        x0 = rng.get_individual()
 
         if self.cfg.scaling == "adaptive":
-            raise NotImplementedError("Adaptive scaling not implemented yet")
-
-        assert isinstance(self.cfg.scaling, float)
-        scaled_h_inv = self.cfg.scaling * hess_inv
+            scaled_h_inv = scale_hess_by_probing(
+                counter,
+                x0,
+                hess_inv,
+            )
+        else:
+            assert isinstance(self.cfg.scaling, float)
+            scaled_h_inv = self.cfg.scaling * hess_inv
 
         bfgs = BFGS(
-            rng.get_individual(),
+            x0,
             counter,
             collector,
             BFGSEarlyStopping(None),
@@ -95,6 +152,7 @@ class BScaleComparisonExperiment:
         )
         raw = pd.concat(dfs)  # pyright: ignore[reportCallIssue, reportArgumentType]
         raw["scaling"] = self.cfg.scaling
+        raw["noise"] = self.cfg.noise
         compress_and_save(raw, self.cfg.result_dir / "raw.parquet")
         summarize_data(raw)
 
