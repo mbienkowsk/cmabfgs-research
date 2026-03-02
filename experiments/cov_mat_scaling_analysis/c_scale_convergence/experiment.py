@@ -182,7 +182,7 @@ class CScaleConvergenceExperiment:
         plt.show()
 
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: OmegaConf):
     config = CScaleConvergenceExperimentConfig.from_omegaconf(cfg)
     config.result_dir.mkdir(parents=True, exist_ok=True)
