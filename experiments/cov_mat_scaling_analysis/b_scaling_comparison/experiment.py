@@ -1,11 +1,14 @@
+import glob
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 import hydra
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from joblib import Parallel, delayed
 from loguru import logger
 from omegaconf import OmegaConf
@@ -16,12 +19,14 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers import BFGS
 from lib.random import IndividualGenerator
+from lib.serde import aggregate_dataframes
 from lib.stopping import BFGSEarlyStopping
 from lib.util import EvalCounter, compress_and_save, run_indices_pgbar, summarize_data
 
 
 @dataclass
 class BScaleComparisonExperimentConfig:
+    mode: Literal["run", "postprocess"]
     num_runs: int
     dimensions: int
     bounds: tuple[float, float]
@@ -49,6 +54,7 @@ class BScaleComparisonExperimentConfig:
             cfg["noise"],  # pyright: ignore[reportIndexIssue]
         )
         return cls(
+            mode=cfg["mode"],  # pyright: ignore[reportIndexIssue]
             num_runs=num_runs,
             dimensions=dimensions,
             bounds=(-bounds, bounds),
@@ -105,7 +111,8 @@ def scale_hess_by_probing(
     # alpha = y.T @ p / (y.T @ B @ y)
 
     alpha = b / a
-    return alpha * B
+    b0 = alpha * B
+    return (b0 + b0.T) / 2
 
 
 @dataclass
@@ -157,12 +164,53 @@ class BScaleComparisonExperiment:
         summarize_data(raw)
 
 
+def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
+    pattern = str(
+        Path(__file__).parent
+        / "results"
+        / f"d{config.dimensions}"
+        / f"bounds_{int(config.bounds[1])}"
+        / "*"
+        / f"noise_{config.noise}"
+        / "raw.parquet"
+    )
+    files = glob.glob(pattern)
+    dfs: list[pd.DataFrame] = []
+    for file in files:
+        df = pd.read_parquet(file)
+        scaling = df["scaling"].iloc[0]
+        df_agg = aggregate_dataframes(
+            [frame for _, frame in df.drop(columns=["scaling"]).groupby("run_id")]
+        ).assign(scaling=scaling)
+        dfs.append(df_agg)
+
+    df_all = pd.concat(dfs).reset_index()
+    df_all["scaling"] = df_all["scaling"].fillna("adaptive")
+    plt.figure(figsize=(8, 5))
+
+    sns.lineplot(
+        data=df_all,
+        x="num_evaluations",
+        y="best",
+        hue="scaling",
+    )
+
+    plt.yscale("log")
+    plt.title("Krzywe zbieżności w zależności od skalowania")
+    plt.tight_layout()
+    plt.show()
+
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: OmegaConf):
     config = BScaleComparisonExperimentConfig.from_omegaconf(cfg)
     config.result_dir.mkdir(parents=True, exist_ok=True)
-    exp = BScaleComparisonExperiment(config)
-    exp.run()
+
+    if config.mode == "run":
+        exp = BScaleComparisonExperiment(config)
+        exp.run()
+    else:
+        postprocess_and_visualize(config)
 
 
 if __name__ == "__main__":
