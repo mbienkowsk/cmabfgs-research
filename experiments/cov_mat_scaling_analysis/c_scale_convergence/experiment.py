@@ -36,32 +36,28 @@ class CScaleConvergenceExperimentConfig:
     num_runs: int
     dimensions: int
     popsize: int
-    lb: float
-    ub: float
-
-    @property
-    def bounds(self):
-        return (self.lb, self.ub)
+    bounds: tuple[float, float]
 
     @property
     def result_dir(self):
         return (
             Path(__file__).parent
             / "results"
-            / f"d{self.dimensions}_popsize_{self.popsize}_bounds_{int(self.ub)}"
+            / f"d{self.dimensions}_popsize_{self.popsize}_bounds_{int(self.bounds[1])}"
         )
 
     @classmethod
     def from_omegaconf(cls, cfg: OmegaConf):
-        num_runs, dimensions, lb, ub = (
+        num_runs, dimensions, bounds = (
             cfg["num_runs"],  # pyright: ignore[reportIndexIssue]
             cfg["dimensions"],  # pyright: ignore[reportIndexIssue]
-            cfg["lb"],  # pyright: ignore[reportIndexIssue]
-            cfg["ub"],  # pyright: ignore[reportIndexIssue]
+            cfg["bounds"],  # pyright: ignore[reportIndexIssue]
         )  # pyright: ignore[reportIndexIssue]
         match ps := cfg["popsize"]:  # pyright: ignore[reportIndexIssue]
             case "hansen":
                 popsize = hansen_cmaes_popsize(dimensions)
+            case "beyer":
+                popsize = 4 * dimensions
             case _:
                 raise NotImplementedError(f"Popsize {ps} not supported")
         return cls(
@@ -69,8 +65,7 @@ class CScaleConvergenceExperimentConfig:
             num_runs=num_runs,
             dimensions=dimensions,
             popsize=popsize,
-            lb=lb,
-            ub=ub,
+            bounds=(-bounds, bounds),
         )
 
 
