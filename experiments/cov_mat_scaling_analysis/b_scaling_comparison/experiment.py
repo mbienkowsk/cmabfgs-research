@@ -111,8 +111,9 @@ def scale_hess_by_probing(
     # alpha = y.T @ p / (y.T @ B @ y)
 
     alpha = b / a
-    b0 = alpha * B
-    return (b0 + b0.T) / 2
+    if alpha < 0:
+        raise ValueError("Negative alpha")
+    return alpha * B
 
 
 @dataclass
