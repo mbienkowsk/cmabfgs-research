@@ -1,5 +1,5 @@
 defaults:
-  - infra/slurm
+  - infra: slurm
   - _self_
 
 num_runs: 25

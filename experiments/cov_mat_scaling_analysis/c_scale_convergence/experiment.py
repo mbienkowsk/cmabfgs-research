@@ -76,7 +76,13 @@ class CScaleConvergenceExperiment:
     def run_subprocess(self, run_id: int):
         rng = IndividualGenerator(run_id, self.cfg.bounds, self.cfg.dimensions)
         collector = MetricsCollector(
-            [m.CovarianceMatrixNorm(), m.SigmaMeasurement(), m.BestSoFar()], run_id
+            [
+                m.CovarianceMatrixNorm(),
+                m.SigmaMeasurement(),
+                m.BestSoFar(),
+                m.CovarianceMatrixEigenvalueList(),
+            ],
+            run_id,
         )
         fn = get_function_by_name("Elliptic")
         counter = EvalCounter(
@@ -117,7 +123,8 @@ class CScaleConvergenceExperiment:
 
         df = df.reset_index()
 
-        fig, axes = plt.subplots(3, 1, figsize=(12, 15), sharex=False)
+        fig, axes = plt.subplots(2, 2, figsize=(18, 12), sharex=False)
+        ax_0 = axes[0][0]
 
         sns.lineplot(
             data=df,
@@ -125,7 +132,7 @@ class CScaleConvergenceExperiment:
             y="cov_mat_ratio",
             estimator="mean",
             errorbar=("pi", 50),
-            ax=axes[0],
+            ax=ax_0,
             label=tex("\\frac{\\|C\\|}{\\|H^{-1}\\|}"),
         )
         sns.lineplot(
@@ -134,17 +141,17 @@ class CScaleConvergenceExperiment:
             y="cov_mat_sigma_sq_ratio",
             estimator="mean",
             errorbar=("pi", 50),
-            ax=axes[0],
+            ax=ax_0,
             label=tex("\\frac{\\|C\\| \\sigma^2}{\\|H^{-1}\\|}"),
         )
-        axes[0].axhline(1, linestyle="--", linewidth=1)
-        axes[0].set_title(
+        ax_0.axhline(1, linestyle="--", linewidth=1)
+        ax_0.set_title(
             "stosunek (przeskalowanej) normy macierzy kowariancji do normy odwrotności hesjanu"
         )
-        axes[0].set_xlabel("num_evaluations")
-        axes[0].set_ylabel("value")
-        axes[0].legend()
-        axes[0].set_yscale("log")
+        ax_0.set_xlabel("num_evaluations")
+        ax_0.set_ylabel("value")
+        ax_0.legend()
+        ax_0.set_yscale("log")
 
         df_long = df.melt(
             id_vars=["num_evaluations", "run_id"],
@@ -152,7 +159,9 @@ class CScaleConvergenceExperiment:
             var_name="metric",
             value_name="value",
         )
+        ax_0.grid()
 
+        ax_1 = axes[0][1]
         sns.lineplot(
             data=df_long,
             x="num_evaluations",
@@ -160,26 +169,67 @@ class CScaleConvergenceExperiment:
             hue="metric",
             estimator="mean",
             errorbar=("pi", 50),
-            ax=axes[1],
+            ax=ax_1,
         )
-        axes[1].set_title("sigma i norma macierzy kowariancji")
-        axes[1].set_xlabel("num_evaluations")
-        axes[1].set_ylabel("value")
-        axes[1].set_yscale("log")
+        ax_1.set_title("sigma i norma macierzy kowariancji")
+        ax_1.set_xlabel("num_evaluations")
+        ax_1.set_ylabel("value")
+        ax_1.set_yscale("log")
+        ax_1.grid()
 
+        ax_2 = axes[1][0]
         sns.lineplot(
             data=df,
             x="num_evaluations",
             y="best",
             estimator="mean",
             errorbar=("pi", 50),
-            ax=axes[2],
+            ax=ax_2,
         )
-        axes[2].set_title("krzywa zbieżności")
-        axes[2].set_yscale("log")
+        ax_2.set_title("krzywa zbieżności")
+        ax_2.set_yscale("log")
+        ax_2.grid()
 
-        for ax in axes:
-            ax.grid()
+        ax_3 = axes[1][1]
+        eigvals = np.stack(df["cov_mat_eigv"].to_numpy())  # pyright: ignore[reportCallIssue, reportArgumentType]
+        eigvals_df = pd.DataFrame(
+            eigvals,
+            columns=[f"eig_{i}" for i in range(eigvals.shape[1])],  # pyright: ignore[reportArgumentType]
+        )
+        df_expanded = pd.concat(
+            [df.drop(columns=["cov_mat_eigv"]).reset_index(drop=True), eigvals_df],
+            axis=1,
+        )
+        df_long = df_expanded.melt(
+            id_vars=["num_evaluations", "run_id"],
+            value_vars=[c for c in df_expanded.columns if c.startswith("eig_")],
+            var_name="component",
+            value_name="eigenvalue",
+        )
+        if eigvals.shape[1] <= 10:
+            sns.lineplot(
+                data=df_long,
+                x="num_evaluations",
+                y="eigenvalue",
+                hue="component",
+                estimator="mean",
+                errorbar=("pi", 50),
+                ax=ax_3,
+            )
+            ax_3.set_title("wartości własne")
+        else:
+            sns.lineplot(
+                data=df_long,
+                x="num_evaluations",
+                y="eigenvalue",
+                estimator="mean",
+                errorbar=("pi", 50),
+                ax=ax_3,
+            )
+            ax_3.set_title("zagregowane wartości własne")
+
+        ax_3.grid()
+        ax_3.set_yscale("log")
 
         plt.tight_layout()
         plt.suptitle(f"D={self.cfg.dimensions}, popsize={self.cfg.popsize}")
