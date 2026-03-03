@@ -32,6 +32,8 @@ class BScaleComparisonExperimentConfig:
     bounds: tuple[float, float]
     scaling: float | Literal["adaptive"]
     noise: float
+    bound_enforcement: Literal["ignore_solutions", "additive_penalty"]
+    probe_step_size: float = 1e-3
 
     @property
     def result_dir(self):
@@ -40,18 +42,30 @@ class BScaleComparisonExperimentConfig:
             / "results"
             / f"d{self.dimensions}"
             / f"bounds_{int(self.bounds[1])}"
-            / f"scaling_{self.scaling}"
+            / f"bound_enforcement_{self.bound_enforcement}"
             / f"noise_{self.noise}"
+            / f"probe_{self.probe_step_size}"
+            / f"scaling_{self.scaling}"
         )
 
     @classmethod
     def from_omegaconf(cls, cfg: OmegaConf):
-        num_runs, dimensions, bounds, scaling, noise = (
+        (
+            num_runs,
+            dimensions,
+            bounds,
+            scaling,
+            noise,
+            bound_enforcement,
+            probe_step_size,
+        ) = (
             cfg["num_runs"],  # pyright: ignore[reportIndexIssue]
             cfg["dimensions"],  # pyright: ignore[reportIndexIssue]
             cfg["bounds"],  # pyright: ignore[reportIndexIssue]
             cfg["scaling"],  # pyright: ignore[reportIndexIssue]
             cfg["noise"],  # pyright: ignore[reportIndexIssue]
+            cfg["bound_enforcement"],  # pyright: ignore[reportIndexIssue]
+            cfg["probe_step_size"],  # pyright: ignore[reportIndexIssue]
         )
         return cls(
             mode=cfg["mode"],  # pyright: ignore[reportIndexIssue]
@@ -60,6 +74,8 @@ class BScaleComparisonExperimentConfig:
             bounds=(-bounds, bounds),
             scaling=scaling,
             noise=noise,
+            bound_enforcement=bound_enforcement,
+            probe_step_size=probe_step_size,
         )
 
 
@@ -124,19 +140,26 @@ class BScaleComparisonExperiment:
         rng = IndividualGenerator(run_id, self.cfg.bounds, self.cfg.dimensions)
         collector = MetricsCollector([BestSoFar()], run_id)
         fn = get_function_by_name("Elliptic")
+        match self.cfg.bound_enforcement:
+            case "ignore_solutions":
+                bound_enforcement_method = BoundEnforcement.IGNORE_SOLUTIONS
+            case "additive_penalty":
+                bound_enforcement_method = BoundEnforcement.ADDITIVE_PENALTY
+            case _:
+                raise ValueError(
+                    f"Unknown bound enforcement method: {self.cfg.bound_enforcement}"
+                )
         counter = EvalCounter(
             fn,  # pyright: ignore[reportArgumentType]
             bounds=self.cfg.bounds,
-            bound_enforcement_method=BoundEnforcement.ADDITIVE_PENALTY,
+            bound_enforcement_method=bound_enforcement_method,
         )
         hess_inv = elliptic_hess_inv_for_dim(self.cfg.dimensions)
         x0 = rng.get_individual()
 
         if self.cfg.scaling == "adaptive":
             scaled_h_inv = scale_hess_by_probing(
-                counter,
-                x0,
-                hess_inv,
+                counter, x0, hess_inv, probe_step_size=self.cfg.probe_step_size
             )
         else:
             assert isinstance(self.cfg.scaling, float)

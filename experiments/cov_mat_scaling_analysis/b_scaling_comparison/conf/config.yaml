@@ -7,6 +7,8 @@ dimensions: 10
 bounds: 5.0
 scaling: adaptive
 noise: 0
+bound_enforcement: ignore_solutions
+probe_step_size: 0.001
 
 mode: postprocessing
 
@@ -16,3 +18,4 @@ hydra:
       dimensions: 10,20,50,100
       bounds: 1.0,5.0,50.0,100.0,1_000_000_000.0
       scaling: 0.0001,0.001,0.1,1.0,1.1,10.0,100.0,1000.0,adaptive
+      bound_enforcement: ignore_solutions,additive_penalty
