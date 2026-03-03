@@ -19,7 +19,7 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers import BFGS
 from lib.random import IndividualGenerator
-from lib.serde import aggregate_dataframes
+from lib.serde import interpolate_and_stack
 from lib.stopping import BFGSEarlyStopping
 from lib.util import EvalCounter, compress_and_save, run_indices_pgbar, summarize_data
 
@@ -163,6 +163,8 @@ class BScaleComparisonExperiment:
         raw["noise"] = self.cfg.noise
         compress_and_save(raw, self.cfg.result_dir / "raw.parquet")
         summarize_data(raw)
+        print("== Best for each run ===")
+        print(raw.groupby("run_id")["best"].min())
 
 
 def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
@@ -180,10 +182,10 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
     for file in files:
         df = pd.read_parquet(file)
         scaling = df["scaling"].iloc[0]
-        df_agg = aggregate_dataframes(
+        df_interp = interpolate_and_stack(
             [frame for _, frame in df.drop(columns=["scaling"]).groupby("run_id")]
         ).assign(scaling=scaling)
-        dfs.append(df_agg)
+        dfs.append(df_interp)
 
     df_all = pd.concat(dfs).reset_index()
     plt.figure(figsize=(8, 5))
@@ -195,6 +197,11 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
         x="num_evaluations",
         y="best",
         hue="scaling",
+        estimator="mean",
+        errorbar=(
+            "pi",
+            50,
+        ),
     )
 
     plt.yscale("log")
@@ -203,6 +210,7 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
     )
     plt.tight_layout()
     plt.savefig(config.result_dir / "plot.png", dpi=300)
+    plt.show()
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
