@@ -232,7 +232,7 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
         f"Krzywe zbieżności w zależności od skalowania; d={config.dimensions}, ograniczenia={config.bounds}"
     )
     plt.tight_layout()
-    plt.savefig(config.result_dir / "plot.png", dpi=300)
+    plt.savefig(config.result_dir.parent / "plot.png", dpi=300)
     plt.show()
 
 
