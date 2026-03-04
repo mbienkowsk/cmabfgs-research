@@ -196,8 +196,10 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
         / "results"
         / f"d{config.dimensions}"
         / f"bounds_{int(config.bounds[1])}"
-        / "*"
+        / f"bound_enforcement_{config.bound_enforcement}"
         / f"noise_{config.noise}"
+        / f"probe_{config.probe_step_size}"
+        / "*"
         / "raw.parquet"
     )
     files = glob.glob(pattern)
@@ -229,7 +231,7 @@ def postprocess_and_visualize(config: BScaleComparisonExperimentConfig):
 
     plt.yscale("log")
     plt.title(
-        f"Krzywe zbieżności w zależności od skalowania; d={config.dimensions}, ograniczenia={config.bounds}"
+        f"Krzywe zbieżności w zależności od skalowania; d={config.dimensions}, ograniczenia={config.bounds}\n egzekwowanie: {'kara' if config.bound_enforcement == 'additive_penalty' else 'brak'}, szum={config.noise}"
     )
     plt.tight_layout()
     plt.savefig(config.result_dir.parent / "plot.png", dpi=300)
