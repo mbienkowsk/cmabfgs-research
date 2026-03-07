@@ -49,6 +49,7 @@ class MultiCMABFGS(Optimizer):
         self.bounds = bounds
         self.precondition = precondition_using_C
         self.x0 = x0
+        self.hess_scaling = hess_scaling
 
     def optimize(self):
         shifted = [0] + self.nums_cmaes_iterations[:-1]
@@ -58,10 +59,12 @@ class MultiCMABFGS(Optimizer):
                 self.cmaes.step()
 
             hess_inv0 = (
-                (self.cmaes.C + self.cmaes.C.T) / 2
+                self.cmaes.C
                 if self.precondition
                 else np.eye(self.x0.shape[0], self.x0.shape[0])
             )
+            hess_inv0 = self.hess_scaling.normalize_and_make_symmetrical(hess_inv0)
+
             identifier = str(self.nums_cmaes_iterations[idx])
             fun = self.fun.copy_with_identifier(f"bfgs_{identifier}")
             # bfgs gets its own eval counter
