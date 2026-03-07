@@ -1,9 +1,9 @@
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from lib.enums import HessianNormalization
-from lib.optimizers.bfgs import BFGS
-from lib.optimizers.cmaes import CMAES
+from lib.optimizers.bfgs import BFGS, BFGSState
+from lib.optimizers.cmaes import CMAES, CMAESState
 from lib.stopping import BFGSEarlyStopping, CMAESEarlyStopping
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ class MultiCMABFGS(Optimizer):
     def __init__(
         self,
         x0: np.ndarray,
-        nums_cmaes_iterations: list[int],
+        local_search_oracle: Callable[..., bool],
         seed: int,
         fun: EvalCounter,
         popsize: int,
@@ -30,7 +30,7 @@ class MultiCMABFGS(Optimizer):
         hess_scaling: HessianNormalization = HessianNormalization.UNIT,
         precondition_using_C: bool = True,
     ):
-        self.nums_cmaes_iterations = nums_cmaes_iterations
+        self.local_search_oracle = local_search_oracle
         self.cmaes = CMAES(
             fun,
             x0,
@@ -44,7 +44,12 @@ class MultiCMABFGS(Optimizer):
         )
         self.seed = seed
         self.fun = fun
-        self.callbacks = callbacks
+
+        def combined_callback(state: CMAESState | BFGSState, identifier):
+            for cb in callbacks:
+                cb(state, identifier)
+
+        self.callback = combined_callback
         self.maxevals = maxevals
         self.bounds = bounds
         self.precondition = precondition_using_C
@@ -52,39 +57,32 @@ class MultiCMABFGS(Optimizer):
         self.hess_scaling = hess_scaling
 
     def optimize(self):
-        shifted = [0] + self.nums_cmaes_iterations[:-1]
-        differences = [x - y for x, y in zip(self.nums_cmaes_iterations, shifted)]
-        for idx, switch_after in enumerate(differences):
-            for _ in range(switch_after):
-                self.cmaes.step()
+        cmaes_iters_done = 0
+        while not self.cmaes.should_stop:
+            self.cmaes.step()
+            cmaes_iters_done += 1
 
-            hess_inv0 = (
-                self.cmaes.C
-                if self.precondition
-                else np.eye(self.x0.shape[0], self.x0.shape[0])
-            )
-            hess_inv0 = self.hess_scaling.normalize_and_make_symmetrical(hess_inv0)
+            if self.local_search_oracle(self.cmaes.state, cmaes_iters_done):
+                hess_inv0 = (
+                    self.cmaes.C
+                    if self.precondition
+                    else np.eye(self.x0.shape[0], self.x0.shape[0])
+                )
+                hess_inv0 = self.hess_scaling.normalize_and_make_symmetrical(hess_inv0)
+                identifier = str(cmaes_iters_done)
+                fun = self.fun.copy_with_identifier(f"bfgs_{identifier}")
+                self.callback(self.cmaes.state, identifier)
 
-            identifier = str(self.nums_cmaes_iterations[idx])
-            fun = self.fun.copy_with_identifier(f"bfgs_{identifier}")
-            # bfgs gets its own eval counter
-            for callback in self.callbacks:
-                callback(self.cmaes.state, identifier)
+                bfgs = BFGS(
+                    self.cmaes.mean,
+                    fun,
+                    self.callback,  # pyright: ignore[reportArgumentType]
+                    BFGSEarlyStopping(self.maxevals),
+                    self.bounds,
+                    identifier=identifier,
+                    hess_inv0=hess_inv0,
+                )
 
-            bfgs = BFGS(
-                self.cmaes.mean,
-                fun,
-                self.callbacks,
-                BFGSEarlyStopping(self.maxevals),
-                self.bounds,
-                identifier=identifier,
-                hess_inv0=hess_inv0,
-            )
-
-            for callback in self.callbacks:
-                callback(bfgs.state, identifier)
-
-            bfgs.optimize()
-            self.cmaes.state.counter.num_evaluations = bfgs.state.num_evaluations
-
-        self.cmaes.optimize()
+                bfgs.optimize()
+                self.cmaes.state.counter.num_evaluations = bfgs.state.num_evaluations
+                self.callback(bfgs.state, identifier)

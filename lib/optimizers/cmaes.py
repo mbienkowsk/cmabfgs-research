@@ -108,3 +108,7 @@ class CMAES(Optimizer):
     @property
     def mean(self):
         return self.inner.mean
+
+    @property
+    def should_stop(self):
+        return self.stopper(self.state, self.identifier)
