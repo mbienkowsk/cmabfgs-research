@@ -7,6 +7,8 @@ import sympy as sp
 
 from lib.cec import get_cec2017_for_dim
 
+type ObjectiveFunction = Callable[[np.ndarray], float]
+
 
 @dataclass
 class OptFun:
@@ -47,6 +49,11 @@ def elliptic_hess_for_dim(dim: int):
     # this is a separable quadratic fun, so evaluate it on whatever and return the result
     # as it's constant for all arguments
     return sp.lambdify([x], hessian_sym, modules="numpy")(np.zeros((dim, dim)))
+
+
+def elliptic_hess_inv_for_dim(dim: int):
+    hess = elliptic_hess_for_dim(dim)
+    return np.linalg.inv(hess)
 
 
 Elliptic = OptFun(elliptic, elliptic_grad, "Elliptic", 0)

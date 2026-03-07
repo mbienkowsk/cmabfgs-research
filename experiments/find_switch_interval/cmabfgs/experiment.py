@@ -17,6 +17,7 @@ from experiments.find_switch_interval.common import (
     ObjectiveChoice,
     OptimumPosition,
 )
+from lib.bound_handling import BoundEnforcement
 from lib.enums import HessianNormalization
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.bfgs import BFGS
@@ -34,7 +35,7 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
         counter = EvalCounter(
             self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
             bounds=self.config.bounds,
-            kill_outside_bounds=True,
+            bound_enforcement_method=BoundEnforcement.DEATH_PENALTY,
         )
         x0 = rng.get_individual()
         bfgs = BFGS(
@@ -68,7 +69,7 @@ class CMABFGSExperiment(ExperimentBase[CMABFGSExperimentConfig]):
             counter = EvalCounter(
                 self.config.get_objective_instance(),  # pyright: ignore[reportArgumentType]
                 bounds=self.config.bounds,
-                kill_outside_bounds=True,
+                bound_enforcement_method=BoundEnforcement.DEATH_PENALTY,
             )
             hess_inv0 = self.reconstruct_covariance_matrix(row["cov_mat"])
             bfgs = BFGS(

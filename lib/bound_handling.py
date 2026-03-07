@@ -4,6 +4,13 @@ import numpy as np
 from loguru import logger
 
 
+class BoundEnforcement(Enum):
+    ALLOW_OOB = "allow_oob"
+    ADDITIVE_PENALTY = "additive_penalty"
+    DEATH_PENALTY = "death_penalty"
+    IGNORE_SOLUTIONS = "ignore_solutions"
+
+
 class RepairMethod(Enum):
     REFLECT = "reflect"
 
@@ -47,3 +54,15 @@ def check_bounds(
     if raise_exception:
         raise OutOfBoundsError(f"Individual {individual} is out of bounds {bounds}.")
     return False
+
+
+def bound_dist_sq(individual: np.ndarray, bounds: tuple[float, float]) -> float:
+    low, high = bounds
+    penalty = 0.0
+    below = individual < low
+    above = individual > high
+    if np.any(below):
+        penalty += np.sum((low - individual[below]) ** 2)
+    if np.any(above):
+        penalty += np.sum((individual[above] - high) ** 2)
+    return penalty

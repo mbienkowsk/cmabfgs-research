@@ -1,0 +1,16 @@
+defaults:
+  - infra: slurm
+  - _self_
+
+num_runs: 25
+dimensions: 10
+popsize: beyer
+bounds: 5
+mode: postprocessing
+
+hydra:
+  sweeper:
+    params:
+      dimensions: 10,20,50,100
+      popsize: hansen,beyer
+      bounds: 5,100
