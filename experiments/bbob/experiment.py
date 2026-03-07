@@ -1,13 +1,12 @@
-from pathlib import Path
-
 import cocoex
 import hydra
 from loguru import logger
 from omegaconf import DictConfig
 
 from lib.optimizers.cmaes import CMAES
+from lib.optimizers.hybrids.multicmabfgs import MultiCMABFGS
 from lib.stopping import CMAESEarlyStopping
-from lib.util import EvalCounter, evaluation_budget
+from lib.util import EvalCounter, evaluation_budget, hansen_cmaes_popsize
 
 SUITE = "bbob"
 
@@ -17,11 +16,12 @@ def suite_for_config(cfg: DictConfig):
 
 
 def algorithm_name(cfg: DictConfig):
-    return (
+    core = (
         "cmaes"
-        if (name := cfg["optimizer"]["name"] == "cmaes")
-        else f"{name}-{cfg['optimizer']['k']}"
+        if ((name := cfg["optimizer"]) == "cmaes")
+        else f"{name}_k-{cfg['optimizers']['cmabfgs']['k']}_precon-{cfg['optimizers']['cmabfgs']['precondition']}_scal-{cfg['optimizers']['cmabfgs']['scaling']}"
     )
+    return f"{core}_pops-{cfg['popsize']}_stop_{cfg['stopping_criterion']}"
 
 
 def observer_for_config(cfg: DictConfig):
@@ -36,32 +36,66 @@ def batcher_for_config(cfg: DictConfig):
 
 
 def result_folder_for_config(cfg: DictConfig):
-    return Path(__file__).parent / f"results/{cfg['optimizer']['name']}"
+    return f"experiments/bbob/results/{algorithm_name(cfg)}"
 
 
 def optimizer_for_config(cfg: DictConfig):
-    match cfg["optimizer"]["name"]:
+    dimensions = cfg["dimensions"]
+
+    match cfg["popsize"]:
+        case "hansen":
+            popsize = hansen_cmaes_popsize(dimensions)
+        case "beyer":
+            popsize = 4 * dimensions
+
+    match cfg["optimizer"]:
         case "cmaes":
 
             def fmin(problem, x0):
                 cma = CMAES(
                     problem,
                     x0,
-                    4 * cfg["dimensions"],
+                    popsize,
                     cfg["seed"],
-                    CMAESEarlyStopping(evaluation_budget(cfg["dimensions"])),
+                    CMAESEarlyStopping(evaluation_budget(dimensions)),
                     [],
                     (-5.0, 5.0),
                 )
                 return cma.optimize()
 
             return fmin
+
+        case "cmabfgs":
+            k = cfg["optimizers"]["cmabfgs"]["k"]
+            precondition = cfg["optimizers"]["cmabfgs"]["precondition"]
+
+            def fmin(problem, x0):
+                def switch_to_bfgs_oracle(cmaes_state, cmaes_iters_done):
+                    return cmaes_iters_done % (k * dimensions) == 0
+
+                cmabfgs = MultiCMABFGS(
+                    x0,
+                    switch_to_bfgs_oracle,
+                    cfg["seed"],
+                    problem,
+                    popsize,
+                    [],
+                    CMAESEarlyStopping(evaluation_budget(dimensions)),
+                    evaluation_budget(dimensions),
+                    (-5, 5),
+                    precondition_using_C=precondition,
+                )
+                return cmabfgs.optimize()
+
+            return fmin
+
         case _:
-            raise NotImplementedError("Not done yet")
+            raise ValueError(f"Unknown optimizer: {cfg['optimizer']}")
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="cmaes")
+@hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
+    print(cfg)
     suite = suite_for_config(cfg)
     logger.info(f"Created suite with {len(suite)} problems")
 
