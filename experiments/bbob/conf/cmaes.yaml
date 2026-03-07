@@ -1,6 +1,0 @@
-defaults:
-  - shared
-  - _self_
-
-optimizer:
-  name: cmaes
