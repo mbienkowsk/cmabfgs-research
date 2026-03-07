@@ -1,3 +1,4 @@
+import math
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -8,8 +9,14 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from sympy import prime
+from tqdm import tqdm
 
-from lib.bound_handling import OutOfBoundsError, check_bounds
+from lib.bound_handling import (
+    BoundEnforcement,
+    OutOfBoundsError,
+    bound_dist_sq,
+    check_bounds,
+)
 
 
 def gradient_central(func: Callable, x: np.ndarray, h: float = 1e-6) -> np.ndarray:
@@ -39,12 +46,11 @@ class EvalCounter:
 
     fun: Callable
     num_evaluations: int = field(default=0)
-    best_solutions: list[tuple[np.ndarray | None, float]] = field(
-        default_factory=list, init=False
-    )
+    best_solutions: list[tuple[np.ndarray | None, float]] = field(default_factory=list)
     bounds: tuple[float, float] | None = None
     identifier: str = ""
-    kill_outside_bounds: bool = False
+    bound_enforcement_method: BoundEnforcement = BoundEnforcement.IGNORE_SOLUTIONS
+    worst_so_far: float | None = field(default=None)
 
     def __call__(self, x):
         self.num_evaluations += 1
@@ -53,25 +59,39 @@ class EvalCounter:
         xbest, ybest = self.best_so_far
 
         if self.bounds and not check_bounds(x, self.bounds, False):
-            if self.kill_outside_bounds:
-                raise OutOfBoundsError(
-                    f"{self.identifier}: Evaluation out of bounds, stopping optimization after {self.num_evaluations} evals"
-                )
+            match self.bound_enforcement_method:
+                case BoundEnforcement.DEATH_PENALTY:
+                    raise OutOfBoundsError(
+                        f"{self.identifier}: Evaluation out of bounds, stopping optimization after {self.num_evaluations} evals"
+                    )
 
-            msg = (
-                "Out of bounds evaluation detected. Refusing to update best_solutions."
-            )
-            if self.identifier:
-                msg = f"{self.identifier}: {msg}"
-            logger.warning(msg)
+                case BoundEnforcement.ADDITIVE_PENALTY:
+                    pen = bound_dist_sq(x, self.bounds)
+                    logger.info("Out of bounds evaluation detected. Applying penalty")
+                    return unwrap_or(self.worst_so_far, 1e30) + pen
 
-            self.best_solutions.append((xbest, ybest))
-            return y
+                case BoundEnforcement.IGNORE_SOLUTIONS:
+                    msg = "Out of bounds evaluation detected. Refusing to update best_solutions."
+                    if self.identifier:
+                        msg = f"{self.identifier}: {msg}"
+                    logger.warning(msg)
+
+                    self.best_solutions.append((xbest, ybest))
+                    return y
+
+                case BoundEnforcement.ALLOW_OOB:
+                    msg = "Out of bounds evaluation detected. Allowing it to be counted and potentially become the new best solution."
+                    if self.identifier:
+                        msg = f"{self.identifier}: {msg}"
+                    logger.warning(msg)
 
         if not self.best_solutions or y < ybest:
             self.best_solutions.append((x, y))
         else:
             self.best_solutions.append((xbest, ybest))
+
+        if self.worst_so_far is None or y > self.worst_so_far:
+            self.worst_so_far = y
 
         return y
 
@@ -88,6 +108,9 @@ class EvalCounter:
             self.best_solutions[:],
             self.bounds,
             identifier,
+            self.bound_enforcement_method,
+            self.worst_so_far,
+            # FIXME: this can fail
         )
 
 
@@ -201,3 +224,17 @@ def trim_constant_tail(
 
 def evaluation_budget(dim: int):
     return 10_000 * dim
+
+
+def hansen_cmaes_popsize(d: int):
+    return 4 + math.floor(3 * math.log(d))
+
+
+def run_indices_pgbar(num_runs: int, prompt: str = ""):
+    return tqdm(range(1, num_runs + 1), prompt or "Processing runs...")
+
+
+def unwrap_or[T](val: T | None, default: T) -> T:
+    if val is None:
+        return default
+    return val
