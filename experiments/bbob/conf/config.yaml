@@ -15,4 +15,4 @@ hydra:
   sweeper:
     params:
       batch: range(0,${n_batches})
-      dimensions: 2,3,5
+      dimensions: 10,20,40
