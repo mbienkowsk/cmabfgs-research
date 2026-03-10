@@ -8,8 +8,8 @@ batch: 0
 dimensions: 2
 seed: 17
 optimizer: cmaes
-popsize: "hansen"
-stopping_criterion: "unlimited"
+popsize: hansen
+stopping_criterion: unlimited
 
 hydra:
   sweeper:

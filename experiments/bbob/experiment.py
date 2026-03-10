@@ -3,6 +3,7 @@ import hydra
 from loguru import logger
 from omegaconf import DictConfig
 
+from lib.bound_handling import BoundEnforcement
 from lib.optimizers.cmaes import CMAES
 from lib.optimizers.hybrids.multicmabfgs import MultiCMABFGS
 from lib.stopping import CMAESEarlyStopping
@@ -16,12 +17,20 @@ def suite_for_config(cfg: DictConfig):
 
 
 def algorithm_name(cfg: DictConfig):
+    name, popsize, stopping_criterion = (
+        cfg[key] for key in ["name", "popsize", "stopping_criterion"]
+    )
+    k, precondition, scaling, kill_outside_bounds = (
+        cfg["optimizers"]["cmabfgs"][key]
+        for key in ["k", "precondition", "scaling", "kill_outside_bounds"]
+    )
+
     core = (
         "cmaes"
-        if ((name := cfg["optimizer"]) == "cmaes")
-        else f"{name}_k-{cfg['optimizers']['cmabfgs']['k']}_precon-{cfg['optimizers']['cmabfgs']['precondition']}_scal-{cfg['optimizers']['cmabfgs']['scaling']}"
+        if (name == "cmaes")
+        else f"{name}_k-{k}_precon-{precondition}_scal-{scaling}-kill_oob_{kill_outside_bounds}"
     )
-    return f"{core}_pops-{cfg['popsize']}_stop_{cfg['stopping_criterion']}"
+    return f"{core}_pops-{popsize}_stop_{stopping_criterion}"
 
 
 def observer_for_config(cfg: DictConfig):
@@ -53,7 +62,7 @@ def optimizer_for_config(cfg: DictConfig):
 
             def fmin(problem, x0):
                 cma = CMAES(
-                    problem,
+                    EvalCounter(problem),
                     x0,
                     popsize,
                     cfg["seed"],
@@ -68,6 +77,12 @@ def optimizer_for_config(cfg: DictConfig):
         case "cmabfgs":
             k = cfg["optimizers"]["cmabfgs"]["k"]
             precondition = cfg["optimizers"]["cmabfgs"]["precondition"]
+            kill_outside_bounds = cfg["optimizers"]["cmabfgs"]["kill_outside_bounds"]
+            bound_handling = (
+                BoundEnforcement.DEATH_PENALTY
+                if kill_outside_bounds
+                else BoundEnforcement.IGNORE_SOLUTIONS
+            )
 
             def fmin(problem, x0):
                 def switch_to_bfgs_oracle(cmaes_state, cmaes_iters_done):
@@ -77,7 +92,7 @@ def optimizer_for_config(cfg: DictConfig):
                     x0,
                     switch_to_bfgs_oracle,
                     cfg["seed"],
-                    problem,
+                    EvalCounter(problem, bound_enforcement_method=bound_handling),
                     popsize,
                     [],
                     CMAESEarlyStopping(evaluation_budget(dimensions)),
@@ -108,7 +123,7 @@ def main(cfg: DictConfig) -> None:
         if batcher.is_in_batch(problem):
             problem.observe_with(observer)
             try:
-                optimizer(EvalCounter(problem), problem.initial_solution)
+                optimizer(problem, problem.initial_solution)
             except Exception as e:
                 logger.error(f"Error optimizing problem {problem}: {e}")
 
