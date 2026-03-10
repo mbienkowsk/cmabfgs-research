@@ -17,8 +17,9 @@ def suite_for_config(cfg: DictConfig):
 
 
 def algorithm_name(cfg: DictConfig):
-    name, popsize, stopping_criterion = (
-        cfg[key] for key in ["name", "popsize", "stopping_criterion"]
+    name = cfg["optimizer"]
+    popsize, stopping_criterion = (
+        cfg[key] for key in ["popsize", "stopping_criterion"]
     )
     k, precondition, scaling, kill_outside_bounds = (
         cfg["optimizers"]["cmabfgs"][key]
