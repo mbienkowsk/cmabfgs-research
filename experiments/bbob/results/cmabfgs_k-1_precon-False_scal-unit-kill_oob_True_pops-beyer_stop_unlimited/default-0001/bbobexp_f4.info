@@ -1,0 +1,3 @@
+suite = 'bbob', funcId = 4, DIM = 40, Precision = 1.000e-08, algId = 'cmabfgs_k-1_precon-False_scal-unit-kill_oob_True_pops-beyer_stop_unlimited', coco_version = '2.8.2', logger = 'bbob', data_format = 'bbob-new2', settings = ''
+% 
+data_f4/bbobexp_f4_DIM40.dat, 1:400084|4.0e+01, 2:400075|4.3e+01, 3:400303|3.2e+01, 4:400150|3.5e+01, 5:400084|3.5e+01, 71:400151|3.5e+01, 72:400013|3.2e+01, 73:400060|3.6e+01, 74:400116|3.2e+01, 75:401610|4.1e+01, 76:400793|3.7e+01, 77:400000|3.3e+01, 78:400054|3.6e+01, 79:401595|3.2e+01, 80:400100|3.3e+01
