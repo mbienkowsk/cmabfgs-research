@@ -153,7 +153,7 @@ def assert_all_non_increasing(
         assert_non_increasing(c, msg)
 
 
-def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int):
+def get_x0_and_seed_for_run_id(run_id: int, dimensions: int, bounds: int | float):
     """Boilerplate for setting up a random generator based on the run_id-th prime and returning a starting point for the given bounds and the prime (seed)"""
     seed: int = prime(run_id)  # pyright: ignore[reportAssignmentType]
     rng = np.random.default_rng(seed)
