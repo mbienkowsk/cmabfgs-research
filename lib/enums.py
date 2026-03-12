@@ -11,6 +11,7 @@ class HessianNormalization(Enum):
     UNIT_DIM = "unit_dim"
     UNIT_DIVIDED_BY_DIM = "unit_divided_by_dim"
     UNIT_DIVIDED_BY_DIM_ROOT = "unit_divided_by_dim_root"
+    DIM_ROOT = "dim_root"
 
     def to_plot_label(self):
         base = "||{B_0}|| = "
@@ -24,6 +25,8 @@ class HessianNormalization(Enum):
                 return tex(base + "1/d")
             case HessianNormalization.UNIT_DIVIDED_BY_DIM_ROOT:
                 return tex(base + "1/\\sqrt{d}")
+            case HessianNormalization.DIM_ROOT:
+                return tex(base + "\\sqrt{d}")
 
     def normalize(self, mat: np.ndarray):
         match self:
@@ -38,6 +41,9 @@ class HessianNormalization(Enum):
 
             case HessianNormalization.UNIT_DIVIDED_BY_DIM_ROOT:
                 return mat / (np.linalg.norm(mat) * np.sqrt(mat.shape[0]))
+
+            case HessianNormalization.DIM_ROOT:
+                return mat / np.linalg.norm(mat) * np.sqrt(mat.shape[0])
 
     def normalize_and_make_symmetrical(self, mat: np.ndarray):
         return make_symmetrical(self.normalize(mat))

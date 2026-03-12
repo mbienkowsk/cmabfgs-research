@@ -81,7 +81,7 @@ def try_load_and_split_cmaes_df_from_disk(dim: int):
 
 def run_cmaes(run_id: int):
     objective = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
-    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
+    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # ty: ignore[invalid-argument-type]
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
     collector = MetricsCollector(
         [
@@ -102,7 +102,7 @@ def run_cmaes(run_id: int):
             MAXEVALS,
             1e-9,
         ),
-        collector,
+        [collector],
         (-BOUNDS, BOUNDS),
     )
     logger.info(f"{run_id}: starting optimization")
@@ -253,7 +253,7 @@ def run_bfgs(
 ):
     """Fills the given collector with bfgs data, doesn't return anything on its own"""
     objective = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
-    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
+    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # ty: ignore[invalid-argument-type]
     bfgs = BFGS(
         x0,
         counter,
