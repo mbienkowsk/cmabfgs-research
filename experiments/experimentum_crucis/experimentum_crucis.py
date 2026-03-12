@@ -38,13 +38,13 @@ RESULT_DIR = (
 )
 PLOT_EXPORT_DIR = RESULT_DIR / "plots"
 
-colors = plt.cm.tab20.colors  # pyright: ignore[reportAttributeAccessIssue]
+colors = plt.cm.tab20.colors  # ty: ignore[unresolved-attribute]
 plt.rcParams["axes.prop_cycle"] = plt.cycler(color=colors)
 
 
 def single_run(run_id: int):
     objective = get_function_by_name(OBJECTIVE_NAME, DIMENSIONS)
-    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # pyright: ignore[reportArgumentType]
+    counter = EvalCounter(objective, bounds=(-BOUNDS, BOUNDS))  # ty: ignore[invalid-argument-type]
     x, seed = get_x0_and_seed_for_run_id(run_id, DIMENSIONS, BOUNDS)
 
     collector = MetricsCollector(
@@ -66,7 +66,7 @@ def single_run(run_id: int):
             MAXEVALS,
             1e-9,
         ),
-        collector,
+        [collector],
         (-BOUNDS, BOUNDS),
     )
 
@@ -93,7 +93,6 @@ def main():
         compression="brotli",
     )
 
-    # TODO: make sure mean over arrays is ok
     agg = concatenated.drop(columns="run_id").groupby(level=0).mean()
     print(agg)
 
