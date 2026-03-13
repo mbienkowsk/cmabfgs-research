@@ -10,7 +10,6 @@ from loguru import logger
 from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
 from lib.optimizers.golden_search import GoldenSearchState
-from lib.optimizers.hybrids.cmabfgs import CMABFGSState
 from lib.optimizers.lbfgs import L_BFGS_BState
 from lib.util import EvalCounter
 
@@ -22,17 +21,11 @@ class Metric(ABC):
     def collect_cmaes(self, state: CMAESState) -> Any:
         raise NotImplementedError
 
-    def collect_bfgs(self, state: BFGSState) -> Any:
+    def collect_bfgs(self, state: BFGSState | L_BFGS_BState) -> Any:
         raise NotImplementedError
 
     def collect_from_counter(self, counter: EvalCounter) -> Any:
         raise NotImplementedError
-
-    def collect_cmabfgs(self, state: CMABFGSState) -> Any:
-        if state.mode == "CMAES":
-            return self.collect_cmaes(state.cmaes_state)
-        elif state.mode == "BFGS":
-            return self.collect_bfgs(state.bfgs_state)
 
     def collect(self, state: CMAESState | BFGSState | GoldenSearchState) -> Any:
         if isinstance(state, CMAESState):
@@ -50,11 +43,6 @@ class Mean(Metric):
     def collect_cmaes(self, state: CMAESState):
         return deepcopy(state.mean)
 
-    def collect_cmabfgs(self, state: CMABFGSState):
-        if state.mode == "CMAES":
-            return self.collect_cmaes(state.cmaes_state)
-        return None
-
 
 class MeanEvaluation(Metric):
     def key(self):
@@ -62,11 +50,6 @@ class MeanEvaluation(Metric):
 
     def collect_cmaes(self, state: CMAESState):
         return state.counter.without_counting(state.mean)
-
-    def collect_cmabfgs(self, state: CMABFGSState):
-        if state.mode == "CMAES":
-            return self.collect_cmaes(state.cmaes_state)
-        return None
 
 
 class BestSoFar(Metric):
@@ -81,7 +64,7 @@ class BestSoFar(Metric):
     def collect_cmaes(self, state: CMAESState):
         return state.counter.best_so_far[1] - self.optimum
 
-    def collect_bfgs(self, state: BFGSState):
+    def collect_bfgs(self, state: BFGSState | L_BFGS_BState):
         return state.counter.best_so_far[1] - self.optimum
 
     def collect_from_counter(self, counter: EvalCounter):
