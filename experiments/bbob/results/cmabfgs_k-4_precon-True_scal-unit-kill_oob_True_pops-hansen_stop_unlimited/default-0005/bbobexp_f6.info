@@ -1,0 +1,3 @@
+suite = 'bbob', funcId = 6, DIM = 40, Precision = 1.000e-08, algId = 'cmabfgs_k-4_precon-True_scal-unit-kill_oob_True_pops-hansen_stop_unlimited', coco_version = '2.8.2', logger = 'bbob', data_format = 'bbob-new2', settings = ''
+% 
+data_f6/bbobexp_f6_DIM40.dat, 1:400014|1.4e-14, 2:401402|1.4e-14, 3:400002|2.3e-13, 4:400014|1.1e-13, 5:400007|2.3e-13, 71:401684|2.4e-13, 72:400040|5.8e-09, 73:400004|7.1e-15, 74:400004|2.3e-13, 75:401903|3.7e-11, 76:401193|3.3e-10, 77:400013|3.4e-13, 78:400310|8.9e-16, 79:400206|4.5e-13, 80:401461|1.3e-13

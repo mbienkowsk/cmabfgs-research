@@ -295,7 +295,7 @@ if __name__ == "__main__":
         )
         plt.show()
     else:
-        DIMS = [10, 20, 50, 100]
+        DIMS = [10, 20, 40, 50, 100]
 
         Parallel(n_jobs=-1)(
             delayed(plot_all_random_x0)(dim)

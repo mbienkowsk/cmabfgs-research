@@ -2,3 +2,7 @@
 *.png filter=lfs diff=lfs merge=lfs -text
 *.csv filter=lfs diff=lfs merge=lfs -text
 *.svg filter=lfs diff=lfs merge=lfs -text
+*.dat filter=lfs diff=lfs merge=lfs -text
+*.rdat filter=lfs diff=lfs merge=lfs -text
+*.mdat filter=lfs diff=lfs merge=lfs -text
+*.tdat filter=lfs diff=lfs merge=lfs -text

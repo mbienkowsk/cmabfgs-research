@@ -1,0 +1,5 @@
+name: cmabfgs
+k: 1
+scaling: unit
+precondition: true
+kill_outside_bounds: true
