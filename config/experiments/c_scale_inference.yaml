@@ -1,0 +1,2 @@
+dimensions: 10
+bfgs_at_iterations: [10, 20, 40, 60, 80, 100]

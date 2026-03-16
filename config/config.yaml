@@ -1,2 +1,4 @@
 defaults:
-  - infra: slurm
+  - infra: tryton
+  - experiments/c_scale_inference@experiments.c_scale_inference
+  - _self_
