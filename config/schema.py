@@ -3,10 +3,6 @@ from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
 
-from experiments.cov_mat_scaling_analysis.c_scale_convergence.experiment import (
-    CScaleConvergenceExperimentConfig,
-)
-
 
 @dataclass
 class MasterConfig:
@@ -14,11 +10,15 @@ class MasterConfig:
 
 
 def register_configs():
+    from experiments.cov_mat_scaling_analysis.scale_inference.experiment import (
+        CScaleInferenceConfig,
+    )
+
     cs = ConfigStore.instance()
 
     cs.store(name="base_config", node=MasterConfig)
     cs.store(
         group="experiments",
         name="c_scale_inference",
-        node=CScaleConvergenceExperimentConfig,
+        node=CScaleInferenceConfig,
     )

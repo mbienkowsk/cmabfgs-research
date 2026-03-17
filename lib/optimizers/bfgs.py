@@ -21,6 +21,7 @@ BFGS_GTOL = 1e-8
 class BFGSState:
     counter: EvalCounter
     current_result: OptimizeResult | None = None
+    end_result: OptimizeResult | None = None
 
     @property
     def num_evaluations(self):
@@ -63,6 +64,8 @@ class BFGS(Optimizer):
             return self.callback(self.state, self.identifier)
 
         try:
+            self.state.counter(self.x0)
+            self.callback(self.state, self.identifier)
             result = minimize(
                 self.state.counter,
                 self.x0,
@@ -73,6 +76,7 @@ class BFGS(Optimizer):
                     "hess_inv0": self.hess_inv0,
                 },
             )
+            self.state.end_result = result
 
             self.state.counter(
                 np.array(self.x0)
