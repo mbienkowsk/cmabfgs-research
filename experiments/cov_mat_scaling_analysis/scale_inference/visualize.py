@@ -172,7 +172,7 @@ class CScaleInferencePlotter:
 @hydra.main(version_base=None, config_name="config", config_path="../../../config/")
 def main(cfg: MasterConfig) -> None:
     plotter = CScaleInferencePlotter(
-        cfg=cfg.experiments.c_scale_inference, save_to_disk=False
+        cfg=cfg.experiments.c_scale_inference, save_to_disk=True
     )
     plotter.plot_all()
 
