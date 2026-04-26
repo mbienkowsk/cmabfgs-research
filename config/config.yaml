@@ -1,4 +1,5 @@
 defaults:
   - infra: tryton
   - experiments/c_scale_inference@experiments.c_scale_inference
+  - experiments/powell_initial_vector_set@experiments.powell_initial_vector_set
   - _self_
