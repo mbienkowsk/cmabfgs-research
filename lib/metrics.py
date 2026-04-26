@@ -11,6 +11,7 @@ from lib.optimizers.bfgs import BFGSState
 from lib.optimizers.cmaes import CMAESState
 from lib.optimizers.golden_search import GoldenSearchState
 from lib.optimizers.lbfgs import L_BFGS_BState
+from lib.optimizers.powell import PowellState
 from lib.util import EvalCounter
 
 
@@ -32,7 +33,7 @@ class Metric(ABC):
             return self.collect_cmaes(state)
         elif isinstance(state, (L_BFGS_BState, BFGSState)):
             return self.collect_bfgs(state)
-        elif isinstance(state, GoldenSearchState):
+        elif isinstance(state, (GoldenSearchState, PowellState)):
             return self.collect_from_counter(state.counter)
 
 

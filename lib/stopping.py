@@ -8,6 +8,7 @@ from loguru import logger
 if TYPE_CHECKING:
     from lib.optimizers.bfgs import BFGSState
     from lib.optimizers.cmaes import CMAESState
+    from lib.optimizers.powell import PowellState
 
 
 class StopReason(Enum):
@@ -66,6 +67,16 @@ class BFGSEarlyStopping:
     max_evals: int | None = field(default=None)
 
     def __call__(self, state: "BFGSState"):
+        if check_max_evals(self.max_evals, state):
+            raise StopOptimization(reason=StopReason.MAXEVALS)
+        return False
+
+
+@dataclass
+class PowellEarlyStopping:
+    max_evals: int | None = field(default=None)
+
+    def __call__(self, state: "PowellState"):
         if check_max_evals(self.max_evals, state):
             raise StopOptimization(reason=StopReason.MAXEVALS)
         return False
