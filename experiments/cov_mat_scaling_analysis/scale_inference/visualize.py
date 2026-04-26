@@ -10,6 +10,7 @@ import hydra
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from config.paths import CONFIG_DIR_STR
 from config.schema import MasterConfig
 from lib.plotting_util import (
     configure_mpl_for_manuscript,
@@ -169,7 +170,7 @@ class CScaleInferencePlotter:
             self.plot_for_iteration(agg, iteration)
 
 
-@hydra.main(version_base=None, config_name="config", config_path="../../../config/")
+@hydra.main(version_base=None, config_name="config", config_path=CONFIG_DIR_STR)
 def main(cfg: MasterConfig) -> None:
     plotter = CScaleInferencePlotter(
         cfg=cfg.experiments.c_scale_inference, save_to_disk=True

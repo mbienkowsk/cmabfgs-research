@@ -8,6 +8,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
 
+from config.paths import CONFIG_DIR_STR
 from config.schema import MasterConfig
 from data import get_cmaes_c_metrics
 from lib.funs import get_function_by_name
@@ -140,7 +141,7 @@ class CScaleInferenceExperiment:
         summarize_data(df)
 
 
-@hydra.main(version_base=None, config_name="config", config_path="../../../config/")
+@hydra.main(version_base=None, config_name="config", config_path=CONFIG_DIR_STR)
 def main(cfg: MasterConfig):
     CScaleInferenceExperiment(cfg.experiments.c_scale_inference).run()
 
