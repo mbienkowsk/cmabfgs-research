@@ -15,6 +15,7 @@ from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.powell import Powell
 from lib.random import IndividualGenerator
+from lib.serde import aggregate_convergence_series
 from lib.stopping import PowellEarlyStopping
 from lib.util import EvalCounter, compress_and_save, run_indices_pgbar
 
@@ -24,6 +25,7 @@ class PowellInitialVectorSetConfig:
     dimensions: int
     bounds: float
     num_matrices: int
+    num_starting_points: int
 
     @property
     def bounds_tuple(self) -> tuple[float, float]:
@@ -48,12 +50,24 @@ class PowellInitialVectorSetExperiment:
             for i in run_indices_pgbar(self.cfg.num_matrices, "Generating matrices...")
         ]
 
-    def run_worker(self, matrix_id: int, R: np.ndarray) -> pd.DataFrame:
-        x0 = IndividualGenerator(
-            matrix_id, self.cfg.bounds_tuple, self.cfg.dimensions
-        ).get_individual()
+    def generate_starting_points(self) -> list[tuple[int, np.ndarray]]:
+        return [
+            (
+                sp_id,
+                IndividualGenerator(
+                    sp_id, self.cfg.bounds_tuple, self.cfg.dimensions
+                ).get_individual(),
+            )
+            for sp_id in run_indices_pgbar(
+                self.cfg.num_starting_points, "Generating starting points..."
+            )
+        ]
+
+    def run_worker(
+        self, matrix_id: int, R: np.ndarray, starting_point_id: int, x0: np.ndarray
+    ) -> pd.DataFrame:
         rotated_fn = rotate_input(elliptic, R)
-        collector = MetricsCollector([BestSoFar()], run_id=matrix_id)
+        collector = MetricsCollector([BestSoFar()], run_id=starting_point_id)
 
         for identifier, direc0 in [("default", None), ("rotated_direc", R)]:
             Powell(
@@ -75,17 +89,47 @@ class PowellInitialVectorSetExperiment:
             identifier="no_rotation",
         ).optimize()
 
-        return collector.as_dataframe()
+        df = collector.as_dataframe()
+        df["matrix_id"] = matrix_id
+        df["starting_point_id"] = starting_point_id
+        return df
+
+    def process_raw(self, raw: pd.DataFrame) -> pd.DataFrame:
+        methods = ("best_default", "best_rotated_direc", "best_no_rotation")
+        processed = []
+        for matrix_id, matrix_group in raw.groupby("matrix_id"):
+            method_means = {}
+            for method in methods:
+                series_list = [
+                    sp_group[method].dropna()
+                    for _, sp_group in matrix_group.groupby("starting_point_id")
+                ]
+                method_means[method] = aggregate_convergence_series(series_list)["mean"]
+
+            df = pd.DataFrame(method_means)
+            df.index.name = "num_evaluations"
+            df["matrix_id"] = matrix_id
+            processed.append(df)
+
+        return pd.concat(processed)
 
     def run(self):
         matrices = self.generate_matrices()
+        starting_points = self.generate_starting_points()
+
         dfs = Parallel(n_jobs=-1, backend="loky")(
-            delayed(self.run_worker)(i, R) for i, R in enumerate(matrices, start=1)
+            delayed(self.run_worker)(matrix_id, R, sp_id, x0)
+            for matrix_id, R in enumerate(matrices, start=1)
+            for sp_id, x0 in starting_points
         )
         raw = pd.concat(dfs)
         self.cfg.result_dir.mkdir(parents=True, exist_ok=True)
         compress_and_save(raw, self.cfg.result_dir / "raw.parquet")
-        logger.info(f"Saved results to {self.cfg.result_dir}")
+        logger.info("Saved raw data")
+
+        processed = self.process_raw(raw)
+        compress_and_save(processed, self.cfg.result_dir / "processed.parquet")
+        logger.info("Saved processed data")
 
 
 @hydra.main(version_base=None, config_name="config", config_path=CONFIG_DIR_STR)
@@ -95,6 +139,7 @@ def main(cfg: MasterConfig):
         dimensions=exp_cfg.dimensions,
         bounds=exp_cfg.bounds,
         num_matrices=exp_cfg.num_matrices,
+        num_starting_points=exp_cfg.num_starting_points,
     )
     PowellInitialVectorSetExperiment(config).run()
 

@@ -1,3 +1,4 @@
 dimensions: 10
 bounds: 100
 num_matrices: 5
+num_starting_points: 5
