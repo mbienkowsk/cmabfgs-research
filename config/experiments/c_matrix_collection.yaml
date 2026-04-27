@@ -1,0 +1,5 @@
+dimensions: 10
+num_runs: 25
+objective: Elliptic
+bounds: 100
+rot_matrix_idx: 1
