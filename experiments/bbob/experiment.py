@@ -4,6 +4,7 @@ from loguru import logger
 from omegaconf import DictConfig
 
 from lib.bound_handling import BoundEnforcement
+from lib.enums import HessianNormalization
 from lib.optimizers.cmaes import CMAES
 from lib.optimizers.hybrids.multicmabfgs import MultiCMABFGS
 from lib.stopping import CMAESEarlyStopping
@@ -86,7 +87,7 @@ def optimizer_for_config(cfg: DictConfig):
             )
 
             def fmin(problem, x0):
-                def switch_to_bfgs_oracle(cmaes_state, cmaes_iters_done):
+                def switch_to_bfgs_oracle(_, cmaes_iters_done):
                     return cmaes_iters_done % (k * dimensions) == 0
 
                 cmabfgs = MultiCMABFGS(
@@ -100,6 +101,9 @@ def optimizer_for_config(cfg: DictConfig):
                     evaluation_budget(dimensions),
                     (-5, 5),
                     precondition_using_C=precondition,
+                    hess_scaling=HessianNormalization(
+                        cfg["optimizers"]["cmabfgs"]["scaling"]
+                    ),
                 )
                 return cmabfgs.optimize()
 
