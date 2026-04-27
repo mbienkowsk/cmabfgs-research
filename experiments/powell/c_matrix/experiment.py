@@ -119,7 +119,8 @@ class PowellCMatrixExperiment:
         mean: list,
     ) -> pd.DataFrame:
         dim = self.config.dimensions
-        direc0 = reconstruct_cov_mat(np.array(cov_mat_flat), dim)
+        cov_mat = reconstruct_cov_mat(np.array(cov_mat_flat), dim)
+        direc0 = np.linalg.eigh(cov_mat)[1].T
         cma_mean = np.array(mean)
         cma_start = IndividualGenerator(
             run_id, self.config.bounds_tuple, dim
