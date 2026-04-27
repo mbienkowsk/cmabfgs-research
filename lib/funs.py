@@ -104,3 +104,7 @@ def get_function_by_name(
 
     else:
         raise ValueError(f"Unknown function name: {name}. ")
+
+
+def rotate_input(fun, R: np.ndarray):
+    return lambda x: fun(R @ x)

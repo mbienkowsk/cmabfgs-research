@@ -10,7 +10,7 @@ from scipy.stats import ortho_group
 
 from config.paths import CONFIG_DIR_STR
 from config.schema import MasterConfig
-from lib.funs import elliptic
+from lib.funs import elliptic, rotate_input
 from lib.metrics import BestSoFar
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.powell import Powell
@@ -34,10 +34,6 @@ class PowellInitialVectorSetConfig:
     @property
     def result_dir(self) -> Path:
         return Path(__file__).parent / "results" / f"d{self.dimensions}"
-
-
-def rotate_input(fun, R: np.ndarray):
-    return lambda x: fun(R @ x)
 
 
 @dataclass

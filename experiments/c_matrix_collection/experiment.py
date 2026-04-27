@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import hydra
-import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from loguru import logger
@@ -12,7 +11,7 @@ from scipy.stats import ortho_group
 import lib.metrics as m
 from config.paths import CMAES_C_METRICS_DIR, CONFIG_DIR_STR
 from config.schema import MasterConfig
-from lib.funs import get_function_by_name
+from lib.funs import get_function_by_name, rotate_input
 from lib.metrics_collector import MetricsCollector
 from lib.optimizers.cmaes import CMAES
 from lib.random import IndividualGenerator
@@ -62,10 +61,6 @@ class CMatrixCollectionConfig:
             bounds=(-cfg.bounds, cfg.bounds),
             rot_matrix_idx=rot_matrix_idx,
         )
-
-
-def rotate_input(fun, R: np.ndarray):
-    return lambda x: fun(R @ x)
 
 
 @dataclass
