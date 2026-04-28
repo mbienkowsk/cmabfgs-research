@@ -39,7 +39,7 @@ class CMatrixCollectionConfig:
     def __post_init__(self):
         self.max_evals = evaluation_budget(self.dimensions)
         self.popsize = 4 * self.dimensions
-        self.collection_interval = self.dimensions // 2
+        self.collection_interval = self.dimensions
         self.output_directory.mkdir(parents=True, exist_ok=True)
 
     @property
