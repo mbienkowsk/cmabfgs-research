@@ -118,19 +118,23 @@ def _(data, mo, rot_dirs_available):
         value="All",
         label="Starting point (run_id)",
     )
+    agg_stat_sel = mo.ui.radio(
+        ["mean", "median"], value="mean", label="Aggregation statistic"
+    )
 
     mo.vstack(
         [
-            mo.hstack([rot_sel, run_id_sel], gap=2),
+            mo.hstack([rot_sel, run_id_sel, agg_stat_sel], gap=2),
             cma_evals_sel,
         ],
         gap=1,
     )
-    return cma_evals_sel, rot_sel, run_id_sel
+    return agg_stat_sel, cma_evals_sel, rot_sel, run_id_sel
 
 
 @app.cell(hide_code=True)
 def _(
+    agg_stat_sel,
     aggregate_convergence_series,
     cm,
     cma_evals_sel,
@@ -151,6 +155,7 @@ def _(
     _conditions = ["cma_mean", "cma_start"]
     _cond_labels = {"cma_mean": "CMA-ES mean as x₀", "cma_start": "Original x₀"}
     _is_individual = run_id_sel.value != "All"
+    _stat = agg_stat_sel.value
 
     _filtered = data[
         data["rot_matrix_idx"].isin(_selected_rot_idxs)
@@ -170,13 +175,19 @@ def _(
         for _cma_eval in _selected_cma_evals:
             _snap = _cond_data[_cond_data["cma_num_evaluations"] == _cma_eval]
             _color = _cmap(_norm(_cma_eval))
+            _label = f"{_cma_eval:,}"
 
             if _is_individual:
                 _run_data = _snap[_snap["run_id"] == int(run_id_sel.value)]
                 _series = _run_data.set_index("num_evaluations")["best"].sort_index()
                 if not _series.empty:
                     _ax.plot(
-                        _series.index, _series.values, color=_color, lw=1.2, alpha=0.9
+                        _series.index,
+                        _series.values,
+                        color=_color,
+                        lw=1.2,
+                        alpha=0.9,
+                        label=_label,
                     )
             else:
                 # aggregate over (run_id × rot_matrix_idx)
@@ -187,7 +198,9 @@ def _(
                 ]
                 if _series_list:
                     _agg = aggregate_convergence_series(_series_list)
-                    _ax.plot(_agg.index, _agg["mean"], color=_color, lw=1.4)
+                    _ax.plot(
+                        _agg.index, _agg[_stat], color=_color, lw=1.4, label=_label
+                    )
                     _ax.fill_between(
                         _agg.index, _agg["q25"], _agg["q75"], color=_color, alpha=0.13
                     )
@@ -197,18 +210,9 @@ def _(
         _ax.set_xlabel("Powell evaluations")
         _ax.set_title(_cond_labels[_condition])
         _ax.grid(True, which="both", alpha=0.3)
+        _ax.legend(title="CMA-ES evals", fontsize=8, title_fontsize=8)
 
     _axes[0].set_ylabel("f(x_best)")
-
-    _sm = cm.ScalarMappable(cmap=_cmap, norm=_norm)
-    _sm.set_array([])
-    _fig.colorbar(
-        _sm,
-        ax=_axes.tolist(),
-        label="CMA-ES evaluations at snapshot",
-        shrink=0.85,
-        pad=0.02,
-    )
 
     _view = f"run_id = {run_id_sel.value}"
     _fig.suptitle(
